@@ -1,5 +1,7 @@
 # CESSDA FAIR Tests
 
+[![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_bronze.png)](https://api.eu.badgr.io/public/assertions/9moivZ2rR-aYZB9oJhrvdA "SQAaaS bronze badge achieved")
+
 This repository contains the source code for CESSDA community-specific FAIR tests that validate data catalogue records against FAIR data principles.
 
 ## Overview
