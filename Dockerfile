@@ -36,20 +36,18 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # ===== Stage 2: Runtime =====
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre-jammy AS runtime
 
 # Environment variables for runtime config
 ENV APP_HOME=/opt/cessda/fair-tests \
     APP_NAME=fair-tests-1.0.0-jar-with-dependencies.jar \
-    MAIN_CLASS=cessda.fairtests.FairTests \
     TEST_TYPE="" \
     URL=""
 
 WORKDIR $APP_HOME
 
 # Copy the built JAR from the build stage
-COPY --from=builder $APP_HOME/target/*.jar $APP_HOME/$APP_NAME
+COPY --from=builder $APP_HOME/target/*-jar-with-dependencies.jar $APP_HOME/$APP_NAME
 
 # Entrypoint — run the Java class with the CDC URL passed as an argument
-ENTRYPOINT ["sh", "-c", "java -cp $APP_HOME/$APP_NAME $MAIN_CLASS \"${TEST_TYPE}\" \"${URL}\""]
-
+ENTRYPOINT ["sh", "-c", "java -jar $APP_HOME/$APP_NAME \"${TEST_TYPE}\" \"${URL}\""]
