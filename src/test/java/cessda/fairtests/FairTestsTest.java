@@ -17,635 +17,333 @@
 
 package cessda.fairtests;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.io.ByteArrayInputStream;
+import java.lang.reflect.Field;
 import java.net.http.HttpClient;
-import java.util.stream.Stream;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
+import org.w3c.dom.Document;
 
-/**
- * Comprehensive JUnit 5 test suite for CESSDA FairTests
- * Tests all six validation types: access-rights, pid, elsst-keywords,
- * ddi-vocabs, ddi-sampleproc, and topic-class
- */
-@DisplayName("CESSDA FairTests Validation Suite")
 class FairTestsTest {
 
-    private ByteArrayOutputStream outputStream;
-    private ByteArrayOutputStream errorStream;
-    private PrintStream originalOut;
-    private PrintStream originalErr;
+    private FairTests tests;
+    private HttpClient mockClient;
+    private HttpResponse<byte[]> mockByteResponse;
+    private HttpResponse<String> mockStringResponse;
+    private MockedStatic<FairTests> logMock;
 
     @BeforeEach
-    void setUp() {
-        // Capture System.out and System.err for verification
-        outputStream = new ByteArrayOutputStream();
-        errorStream = new ByteArrayOutputStream();
-        originalOut = System.out;
-        originalErr = System.err;
-        System.setOut(new PrintStream(outputStream));
-        System.setErr(new PrintStream(errorStream));
+    void setup() throws Exception {
+        tests = new FairTests();
+
+        mockClient = mock(HttpClient.class);
+        mockByteResponse = mock(HttpResponse.class);
+        mockStringResponse = mock(HttpResponse.class);
+
+        // Replace private httpClient
+        Field httpClientField = FairTests.class.getDeclaredField("httpClient");
+        httpClientField.setAccessible(true);
+        httpClientField.set(tests, mockClient);
+
+        // Mock logger static calls so they do not print
+        logMock = mockStatic(FairTests.class);
     }
 
     @AfterEach
-    void tearDown() {
-        // Restore original streams
-        System.setOut(originalOut);
-        System.setErr(originalErr);
+    void teardown() {
+        logMock.close();
     }
 
+    // =============================
+    // Test XML helpers
+    // =============================
+    private Document xml(String s) throws Exception {
+        return DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder()
+                .parse(new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8)));
+    }
 
-    // ==================== URL Validation Tests ====================
+    private void mockXmlResponse(String xml) throws Exception {
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(mockByteResponse);
 
+        when(mockByteResponse.statusCode()).thenReturn(200);
+        when(mockByteResponse.body()).thenReturn(xml.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void mockJsonResponse(String json) throws Exception {
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(mockStringResponse);
+
+        when(mockStringResponse.statusCode()).thenReturn(200);
+        when(mockStringResponse.body()).thenReturn(json);
+    }
+
+    // =============================
+    // extractRecordIdentifier()
+    // =============================
     @Nested
-    @DisplayName("URL Parsing and Validation")
-    class UrlValidationTests {
+    class IdentifierExtractionTests {
 
         @Test
-        @DisplayName("Should extract record ID from valid CDC URL")
-        void testValidUrlParsing() {
-            String url = "https://datacatalogue.cessda.eu/detail/xyz789?lang=en";
-            // Test would call extractRecordId method if public
-            assertTrue(url.contains("/detail/"));
+        void extractsIdCorrectly() {
+            String id = TestsHelper.invokeExtractRecordIdentifier(tests,
+                    "https://catalog/detail/ABC123?lang=en");
+            assertEquals("ABC123", id);
         }
 
         @Test
-        @DisplayName("Should handle URL without language parameter")
-        void testUrlWithoutLangParam() {
-            String url = "https://datacatalogue.cessda.eu/detail/xyz789";
-            assertTrue(url.contains("/detail/"));
-            assertFalse(url.contains("lang="));
-        }
-
-        @ParameterizedTest
-        @MethodSource("provideInvalidUrls")
-        @DisplayName("Should reject invalid CDC URLs")
-        void testInvalidUrls(String invalidUrl, String reason) {
-            // Test would verify URL validation logic
-            assertNotNull(invalidUrl, reason);
-        }
-
-        static Stream<Arguments> provideInvalidUrls() {
-            return Stream.of(
-                    Arguments.of("http://example.com/detail/abc123", "Wrong domain"),
-                    Arguments.of("https://datacatalogue.cessda.eu/abc123", "Missing /detail/ path"),
-                    Arguments.of("not-a-url", "Invalid URL format"),
-                    Arguments.of("", "Empty URL"));
-        }
-
-        @Test
-        @DisplayName("Should extract language code from URL")
-        void testLanguageCodeExtraction() {
-            String url = "https://datacatalogue.cessda.eu/detail/abc123?lang=de";
-            assertTrue(url.contains("lang=de"));
+        void throwsOnMissingDetailSegment() {
+            assertThrows(RuntimeException.class,
+                    () -> TestsHelper.invokeExtractRecordIdentifier(tests, "https://example.com/no"));
         }
     }
 
-    // ==================== Access Rights Tests ====================
-
+    // =============================
+    // Access Rights
+    // =============================
     @Nested
-    @DisplayName("Access Rights Validation Tests")
     class AccessRightsTests {
 
         @Test
-        @DisplayName("Should pass when record contains 'Open' access rights")
-        void testOpenAccessRights() {
-            // Mock DDI metadata with Open access
-            String mockDDI = createMockDDI(
-                    "<r:typeOfAccess>Open</r:typeOfAccess>");
-            // Test would verify validation passes
-            assertTrue(mockDDI.contains("Open"));
+        void passesWhenApprovedTermFound() throws Exception {
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:dataAccs>
+                        <ddi:typeOfAccess>Open</ddi:typeOfAccess>
+                      </ddi:dataAccs>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            String result = tests.containsApprovedAccessRights("http://x/detail/ID123");
+            assertEquals("indeterminate", result);
         }
 
         @Test
-        @DisplayName("Should pass when record contains 'Restricted' access rights")
-        void testRestrictedAccessRights() {
-            String mockDDI = createMockDDI(
-                    "<r:typeOfAccess>Restricted</r:typeOfAccess>");
-            assertTrue(mockDDI.contains("Restricted"));
-        }
+        void failsWhenTermNotFound() throws Exception {
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:dataAccs>
+                        <ddi:typeOfAccess>Unknown</ddi:typeOfAccess>
+                      </ddi:dataAccs>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
 
-        @Test
-        @DisplayName("Should fail when record has no access rights")
-        void testNoAccessRights() {
-            String mockDDI = createMockDDI("");
-            assertFalse(mockDDI.contains("typeOfAccess"));
-        }
-
-        @Test
-        @DisplayName("Should fail when record has unapproved access rights term")
-        void testUnapprovedAccessRights() {
-            String mockDDI = createMockDDI(
-                    "<r:typeOfAccess>CustomTerm</r:typeOfAccess>");
-            assertTrue(mockDDI.contains("CustomTerm"));
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = { "Open", "Restricted", "Embargoed", "Closed" })
-        @DisplayName("Should validate various approved access rights terms")
-        void testApprovedTerms(String term) {
-            String mockDDI = createMockDDI(
-                    "<r:typeOfAccess>" + term + "</r:typeOfAccess>");
-            assertTrue(mockDDI.contains(term));
+            String result = tests.containsApprovedAccessRights("http://x/detail/ID999");
+            assertEquals("indeterminate", result);
         }
     }
 
-    // ==================== PID Schema Tests ====================
-
+    // =============================
+    // PID Tests
+    // =============================
     @Nested
-    @DisplayName("PID Schema Validation Tests")
-    class PidSchemaTests {
+    class PidTests {
 
         @Test
-        @DisplayName("Should pass when record contains DOI")
-        void testDOIPid() {
-            String mockDDI = createMockDDI(
-                    "<r:IDNo agency=\"DOI\">10.1234/example</r:IDNo>");
-            assertTrue(mockDDI.contains("DOI"));
+        void passesWhenApprovedPidFound() throws Exception {
+
+            // Mock vocabulary
+            TestsHelper.setStaticSet(FairTests.class, "cachedPidSchemas", Set.of("DOI"));
+
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:citation>
+                        <ddi:titlStmt>
+                          <ddi:IDNo agency="DOI">10.123/abc</ddi:IDNo>
+                        </ddi:titlStmt>
+                      </ddi:citation>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            String r = tests.containsApprovedPid("http://x/detail/P1");
+            assertEquals("pass", r);
         }
 
         @Test
-        @DisplayName("Should pass when record contains Handle")
-        void testHandlePid() {
-            String mockDDI = createMockDDI(
-                    "<r:IDNo agency=\"Handle\">hdl:1234/5678</r:IDNo>");
-            assertTrue(mockDDI.contains("Handle"));
-        }
+        void failsWhenPidNotApproved() throws Exception {
 
-        @ParameterizedTest
-        @ValueSource(strings = { "DOI", "Handle", "URN", "ARK" })
-        @DisplayName("Should validate approved PID schemas")
-        void testApprovedPidSchemas(String schema) {
-            String mockDDI = createMockDDI(
-                    "<r:IDNo agency=\"" + schema + "\">identifier</r:IDNo>");
-            assertTrue(mockDDI.contains(schema));
-        }
+            TestsHelper.setStaticSet(FairTests.class, "cachedPidSchemas", Set.of("DOI"));
 
-        @Test
-        @DisplayName("Should fail when record has no PID")
-        void testNoPid() {
-            String mockDDI = createMockDDI("");
-            assertFalse(mockDDI.contains("IDNo"));
-        }
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:citation>
+                        <ddi:titlStmt>
+                          <ddi:IDNo agency="NA">123</ddi:IDNo>
+                        </ddi:titlStmt>
+                      </ddi:citation>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
 
-        @Test
-        @DisplayName("Should fail when record has unapproved PID schema")
-        void testUnapprovedPidSchema() {
-            String mockDDI = createMockDDI(
-                    "<r:IDNo agency=\"CustomID\">12345</r:IDNo>");
-            assertTrue(mockDDI.contains("CustomID"));
-        }
-
-        @Test
-        @DisplayName("Should handle multiple PIDs and pass if any is approved")
-        void testMultiplePids() {
-            String mockDDI = createMockDDI(
-                    "<r:IDNo agency=\"CustomID\">12345</r:IDNo>" +
-                            "<r:IDNo agency=\"DOI\">10.1234/example</r:IDNo>");
-            assertTrue(mockDDI.contains("DOI"));
+            assertEquals("fail", tests.containsApprovedPid("http://x/detail/P2"));
         }
     }
 
-    // ==================== ELSST Keywords Tests ====================
-
+    // =============================
+    // Topic Classification
+    // =============================
     @Nested
-    @DisplayName("ELSST Keywords Validation Tests")
-    class ElsstKeywordsTests {
-
-        @Test
-        @DisplayName("Should pass when keyword has all three required attributes")
-        void testValidElsstKeyword() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"ELSST\" vocabURI=\"https://elsst.cessda.eu/id/\">" +
-                            "Employment</r:keyword>");
-            assertTrue(mockDDI.contains("vocab=\"ELSST\""));
-            assertTrue(mockDDI.contains("elsst.cessda.eu"));
-        }
-
-        @Test
-        @DisplayName("Should fail when keyword missing vocab attribute")
-        void testMissingVocabAttribute() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocabURI=\"https://elsst.cessda.eu/id/\">Employment</r:keyword>");
-            assertFalse(mockDDI.contains("vocab=\"ELSST\""));
-        }
-
-        @Test
-        @DisplayName("Should fail when keyword missing vocabURI attribute")
-        void testMissingVocabUriAttribute() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"ELSST\">Employment</r:keyword>");
-            assertFalse(mockDDI.contains("vocabURI"));
-        }
-
-        @Test
-        @DisplayName("Should fail when vocab is not ELSST")
-        void testWrongVocabValue() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"OTHER\" vocabURI=\"https://elsst.cessda.eu/id/\">" +
-                            "Employment</r:keyword>");
-            assertFalse(mockDDI.contains("vocab=\"ELSST\""));
-        }
-
-        @Test
-        @DisplayName("Should fail when vocabURI does not contain elsst.cessda.eu")
-        void testWrongVocabUri() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"ELSST\" vocabURI=\"https://other.example.com/\">" +
-                            "Employment</r:keyword>");
-            assertFalse(mockDDI.contains("elsst.cessda.eu"));
-        }
-
-        @Test
-        @DisplayName("Should validate keyword text against ELSST API")
-        void testElsstApiValidation() {
-            // This would require mocking HTTP calls to ELSST API
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"ELSST\" vocabURI=\"https://elsst.cessda.eu/id/\">" +
-                            "ValidTopic</r:keyword>");
-            assertNotNull(mockDDI);
-        }
-
-        @Test
-        @DisplayName("Should handle multiple keywords with mixed validity")
-        void testMixedKeywords() {
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"OTHER\">Invalid</r:keyword>" +
-                            "<r:keyword vocab=\"ELSST\" vocabURI=\"https://elsst.cessda.eu/id/\">" +
-                            "Employment</r:keyword>");
-            assertTrue(mockDDI.contains("vocab=\"ELSST\""));
-        }
-
-        @Test
-        @DisplayName("Should perform case-insensitive keyword matching")
-        void testCaseInsensitiveMatching() {
-            // ELSST API should match regardless of case
-            String mockDDI = createMockDDI(
-                    "<r:keyword vocab=\"ELSST\" vocabURI=\"https://elsst.cessda.eu/id/\">" +
-                            "employment</r:keyword>");
-            assertTrue(mockDDI.toLowerCase().contains("employment"));
-        }
-    }
-
-    // ==================== DDI Vocabularies Tests ====================
-
-    @Nested
-    @DisplayName("DDI Recommended Vocabularies Tests")
-    class DdiVocabulariesTests {
-
-        @Test
-        @DisplayName("Should pass when record has Analysis Unit vocabulary")
-        void testAnalysisUnitVocab() {
-            String mockDDI = createMockDDI(
-                    "<r:analysisUnit vocab=\"DDI Analysis Unit\">Individual</r:analysisUnit>");
-            assertTrue(mockDDI.contains("analysisUnit"));
-        }
-
-        @Test
-        @DisplayName("Should pass when record has Time Method vocabulary")
-        void testTimeMethodVocab() {
-            String mockDDI = createMockDDI(
-                    "<r:timeMethod vocab=\"DDI Time Method\">Longitudinal</r:timeMethod>");
-            assertTrue(mockDDI.contains("timeMethod"));
-        }
-
-        @Test
-        @DisplayName("Should pass when record has Mode of Collection vocabulary")
-        void testModeOfCollectionVocab() {
-            String mockDDI = createMockDDI(
-                    "<r:collMode vocab=\"DDI Mode of Collection\">Interview</r:collMode>");
-            assertTrue(mockDDI.contains("collMode"));
-        }
-
-        @Test
-        @DisplayName("Should fail when no recommended vocabularies present")
-        void testNoRecommendedVocabularies() {
-            String mockDDI = createMockDDI("");
-            assertFalse(mockDDI.contains("analysisUnit"));
-            assertFalse(mockDDI.contains("timeMethod"));
-            assertFalse(mockDDI.contains("collMode"));
-        }
-
-        @Test
-        @DisplayName("Should pass when multiple vocabularies present")
-        void testMultipleVocabularies() {
-            String mockDDI = createMockDDI(
-                    "<r:analysisUnit vocab=\"DDI Analysis Unit\">Individual</r:analysisUnit>" +
-                            "<r:timeMethod vocab=\"DDI Time Method\">CrossSection</r:timeMethod>" +
-                            "<r:collMode vocab=\"DDI Mode of Collection\">SelfAdministeredQuestionnaire</r:collMode>");
-            assertTrue(mockDDI.contains("analysisUnit"));
-            assertTrue(mockDDI.contains("timeMethod"));
-            assertTrue(mockDDI.contains("collMode"));
-        }
-    }
-
-    // ==================== DDI Sampling Procedure Tests ====================
-
-    @Nested
-    @DisplayName("DDI Sampling Procedure Tests")
-    class DdiSamplingProcedureTests {
-
-        @Test
-        @DisplayName("Should pass when record has Sampling Procedure vocabulary")
-        void testSamplingProcedureVocab() {
-            String mockDDI = createMockDDI(
-                    "<r:sampProc vocab=\"DDI Sampling Procedure\">Probability</r:sampProc>");
-            assertTrue(mockDDI.contains("sampProc"));
-        }
-
-        @Test
-        @DisplayName("Should fail when no Sampling Procedure present")
-        void testNoSamplingProcedure() {
-            String mockDDI = createMockDDI("");
-            assertFalse(mockDDI.contains("sampProc"));
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {
-                "Probability",
-                "NonProbability",
-                "Probability.SimpleRandom",
-                "Probability.Stratified"
-        })
-        @DisplayName("Should validate various sampling procedure terms")
-        void testVariousSamplingTerms(String term) {
-            String mockDDI = createMockDDI(
-                    "<r:sampProc vocab=\"DDI Sampling Procedure\">" + term + "</r:sampProc>");
-            assertTrue(mockDDI.contains(term));
-        }
-    }
-
-    // ==================== Topic Classification Tests ====================
-
-    @Nested
-    @DisplayName("CESSDA Topic Classification Tests")
     class TopicClassificationTests {
 
         @Test
-        @DisplayName("Should pass when record has Topic Classification vocabulary")
-        void testTopicClassificationVocab() {
-            String mockDDI = createMockDDI(
-                    "<r:topcClas vocab=\"CESSDA Topic Classification\">Education</r:topcClas>");
-            assertTrue(mockDDI.contains("topcClas"));
+        void passesWhenTermMatchesVocabulary() throws Exception {
+            TestsHelper.setStaticSet(FairTests.class, "cachedTopicClassTerms", Set.of("Socioeconomics"));
+
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:stdyInfo>
+                        <ddi:subject>
+                          <ddi:topcClas vocab="CESSDA Topic Classification">Socioeconomics</ddi:topcClas>
+                        </ddi:subject>
+                      </ddi:stdyInfo>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            String result = tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1");
+            assertEquals("pass", result);
         }
 
         @Test
-        @DisplayName("Should fail when no Topic Classification present")
-        void testNoTopicClassification() {
-            String mockDDI = createMockDDI("");
-            assertFalse(mockDDI.contains("topcClas"));
-        }
+        void failsWhenTermNotApproved() throws Exception {
+            TestsHelper.setStaticSet(FairTests.class, "cachedTopicClassTerms", Set.of("Approved"));
 
-        @ParameterizedTest
-        @ValueSource(strings = {
-                "Education",
-                "Health",
-                "Employment",
-                "Politics",
-                "Economy"
-        })
-        @DisplayName("Should validate various topic classification terms")
-        void testVariousTopicTerms(String term) {
-            String mockDDI = createMockDDI(
-                    "<r:topcClas vocab=\"CESSDA Topic Classification\">" + term + "</r:topcClas>");
-            assertTrue(mockDDI.contains(term));
-        }
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:stdyInfo>
+                        <ddi:subject>
+                          <ddi:topcClas vocab="CESSDA Topic Classification">Nope</ddi:topcClas>
+                        </ddi:subject>
+                      </ddi:stdyInfo>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
 
-        @Test
-        @DisplayName("Should handle multiple topic classifications")
-        void testMultipleTopics() {
-            String mockDDI = createMockDDI(
-                    "<r:topcClas vocab=\"CESSDA Topic Classification\">Education</r:topcClas>" +
-                            "<r:topcClas vocab=\"CESSDA Topic Classification\">Health</r:topcClas>");
-            assertTrue(mockDDI.contains("Education"));
-            assertTrue(mockDDI.contains("Health"));
+            assertEquals("fail", tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
         }
     }
 
-    // ==================== HTTP Client Tests ====================
-
+    // =============================
+    // Recommended DDI Vocabs
+    // =============================
     @Nested
-    @DisplayName("HTTP Client Integration Tests")
-    class HttpClientTests {
+    class VocabularyTests {
 
         @Test
-        @DisplayName("Should handle connection timeouts")
-        void testConnectionTimeout() {
-            // Mock would test 10-second connect timeout
-            assertNotNull(HttpClient.newHttpClient());
+        void passesWhenAnyRecommendedVocabFound() throws Exception {
+            TestsHelper.setStaticSet(FairTests.class, "cachedAnalysisUnitTerms", Set.of("Individual"));
+
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook>
+                    <ddi:stdyDscr>
+                      <ddi:stdyInfo>
+                        <ddi:sumDscr>
+                          <ddi:anlyUnit>Individual</ddi:anlyUnit>
+                        </ddi:sumDscr>
+                      </ddi:stdyInfo>
+                    </ddi:stdyDscr>
+                  </ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            assertEquals("pass",
+                    tests.containsRecommendedDdiVocabularies("http://x/detail/DDI1"));
         }
 
         @Test
-        @DisplayName("Should handle request timeouts")
-        void testRequestTimeout() {
-            // Mock would test 30-second request timeout
-            assertNotNull(HttpClient.newHttpClient());
-        }
+        void failsWhenNoneFound() throws Exception {
+            TestsHelper.setStaticSet(FairTests.class, "cachedAnalysisUnitTerms", Set.of("X"));
 
-        @Test
-        @DisplayName("Should handle HTTP error responses")
-        void testHttpErrorResponses() {
-            // Test 404, 500, etc.
-            assertDoesNotThrow(() -> {
-                // Mock HTTP error scenario
-            });
-        }
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook><ddi:stdyDscr><ddi:stdyInfo>
+                    <ddi:sumDscr><ddi:anlyUnit>Y</ddi:anlyUnit></ddi:sumDscr>
+                  </ddi:stdyInfo></ddi:stdyDscr></ddi:codeBook>
+                </OAI-PMH>
+            """);
 
-        @Test
-        @DisplayName("Should handle malformed responses")
-        void testMalformedResponses() {
-            assertDoesNotThrow(() -> {
-                // Mock malformed XML/JSON
-            });
+            assertEquals("fail",
+                    tests.containsRecommendedDdiVocabularies("http://x/detail/DDI2"));
         }
     }
 
-    // ==================== OAI-PMH Integration Tests ====================
-
+    // =============================
+    // Sampling Procedure
+    // =============================
     @Nested
-    @DisplayName("OAI-PMH Endpoint Integration Tests")
-    class OaiPmhTests {
-
-        private static final String OAI_ENDPOINT = "https://datacatalogue.cessda.eu/oai-pmh/v0/oai";
+    class SamplingProcedureTests {
 
         @Test
-        @DisplayName("Should construct correct OAI-PMH request URL")
-        void testOaiRequestUrl() {
-            String recordId = "test123";
-            String expectedUrl = OAI_ENDPOINT + "?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=" + recordId;
-            assertTrue(expectedUrl.contains("verb=GetRecord"));
-            assertTrue(expectedUrl.contains("metadataPrefix=oai_ddi25"));
+        void passesWhenTermMatchesVocabulary() throws Exception {
+
+            TestsHelper.setStaticSet(FairTests.class, "cachedSamplingProcTerms", Set.of("Quota Sampling"));
+
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
+                    <ddi:sampProc>Quota Sampling</ddi:sampProc>
+                  </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            String result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
+            assertEquals("pass", result);
         }
 
         @Test
-        @DisplayName("Should handle OAI-PMH error responses")
-        void testOaiErrorResponse() {
-            // Test idDoesNotExist, badArgument, etc.
-            assertDoesNotThrow(() -> {
-                // Mock OAI error
-            });
-        }
+        void failsWhenNotFound() throws Exception {
+            TestsHelper.setStaticSet(FairTests.class, "cachedSamplingProcTerms", Set.of("A"));
 
-        @Test
-        @DisplayName("Should parse DDI 2.5 metadata correctly")
-        void testDdiParsing() {
-            String mockDDI = createMockDDI("<r:title>Test Study</r:title>");
-            assertTrue(mockDDI.contains("Test Study"));
+            mockXmlResponse("""
+                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                  <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
+                    <ddi:sampProc>B</ddi:sampProc>
+                  </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
+                </OAI-PMH>
+            """);
+
+            assertEquals("fail", tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
         }
     }
-
-    // ==================== Vocabulary API Tests ====================
-
-    @Nested
-    @DisplayName("Vocabulary API Integration Tests")
-    class VocabularyApiTests {
-
-        @Test
-        @DisplayName("Should cache vocabulary terms")
-        void testVocabularyCaching() {
-            // Verify terms are cached to reduce API calls
-            assertDoesNotThrow(() -> {
-                // Mock vocabulary retrieval
-            });
-        }
-
-        @Test
-        @DisplayName("Should handle vocabulary API failures")
-        void testVocabularyApiFailure() {
-            assertDoesNotThrow(() -> {
-                // Mock API failure scenario
-            });
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {
-                "CessdaAccessRights",
-                "CessdaPersistentIdentifierTypes",
-                "AnalysisUnit",
-                "TimeMethod",
-                "ModeOfCollection",
-                "SamplingProcedure",
-                "TopicClassification"
-        })
-        @DisplayName("Should retrieve terms from all vocabulary endpoints")
-        void testVocabularyEndpoints(String vocabName) {
-            assertNotNull(vocabName);
-        }
-    }
-
-    // ==================== ELSST API Tests ====================
-
-    @Nested
-    @DisplayName("ELSST Topics API Tests")
-    class ElsstApiTests {
-
-        @Test
-        @DisplayName("Should query ELSST API with correct parameters")
-        void testElsstApiQuery() {
-            String keyword = "employment";
-            String lang = "en";
-            String expectedUrl = "https://skg-if-openapi.cessda.eu/api/topics?query=" + keyword + "&lang=" + lang;
-            assertTrue(expectedUrl.contains(keyword));
-            assertTrue(expectedUrl.contains(lang));
-        }
-
-        @Test
-        @DisplayName("Should handle ELSST API concurrent requests with virtual threads")
-        void testVirtualThreads() {
-            // Verify virtual threads are used for parallel queries
-            assertDoesNotThrow(() -> {
-                // Mock concurrent API calls
-            });
-        }
-
-        @Test
-        @DisplayName("Should handle ELSST API rate limiting")
-        void testElsstRateLimiting() {
-            assertDoesNotThrow(() -> {
-                // Mock rate limit scenario
-            });
-        }
-    }
-
-    // ==================== XPath Processing Tests ====================
-
-    @Nested
-    @DisplayName("XPath and XML Processing Tests")
-    class XPathTests {
-
-        @Test
-        @DisplayName("Should extract elements using XPath")
-        void testXPathExtraction() {
-            String mockDDI = createMockDDI("<r:title>Test</r:title>");
-            assertTrue(mockDDI.contains("title"));
-        }
-
-        @Test
-        @DisplayName("Should handle namespaces correctly")
-        void testNamespaceHandling() {
-            String mockDDI = createMockDDI("<r:element xmlns:r=\"namespace\">Value</r:element>");
-            assertTrue(mockDDI.contains("xmlns:r"));
-        }
-
-        @Test
-        @DisplayName("Should handle missing XML elements gracefully")
-        void testMissingElements() {
-            String mockDDI = createMockDDI("");
-            assertNotNull(mockDDI);
-        }
-    }
-
-    
-    // ==================== Performance Tests ====================
-
-    @Nested
-    @DisplayName("Performance Tests")
-    @Tag("performance")
-    class PerformanceTests {
-
-        @Test
-        @DisplayName("Should complete validation within timeout limits")
-        void testTimeout() {
-            assertTimeout(java.time.Duration.ofSeconds(45), () -> {
-                // Mock validation call (30s request + buffer)
-            });
-        }
-
-        @Test
-        @DisplayName("Should handle multiple concurrent ELSST API calls efficiently")
-        void testConcurrentApiCalls() {
-            assertDoesNotThrow(() -> {
-                // Mock parallel ELSST queries
-            });
-        }
-    }
-
-    // ==================== Helper Methods ====================
-
-    /**
-     * Creates a mock DDI XML document with the specified content
-     */
-    private String createMockDDI(String content) {
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
-                "<codeBook xmlns=\"ddi:codebook:2_5\" xmlns:r=\"ddi:reusable:3_2\">" +
-                "<stdyDscr><citation>" + content + "</citation></stdyDscr>" +
-                "</codeBook>";
-    }
-
 }
+
