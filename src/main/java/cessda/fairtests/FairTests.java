@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -54,6 +55,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -755,20 +757,38 @@ public class FairTests {
         return cachedElsstKeywords;
     }
 
-    private Set<String> parseElsstKeywords(String json) throws IOException {
-        Set<String> keywords = new HashSet<>();
-        JsonNode results = mapper.readTree(json).path("results");
-        if (results.isArray()) {
-            for (JsonNode r : results) {
-                JsonNode labels = r.path("labels");
-                if (labels.isObject()) {
-                    labels.fields()
-                            .forEachRemaining(e -> keywords.add(e.getKey() + ":\"" + e.getValue().asText() + "\""));
+    /**
+     * Parse the ELSST API JSON response to extract keywords.
+     * @param json The JSON response string
+     * @return Set of keywords in the format langCode:"keyword"
+     * @throws NoSuchElementException if parsing fails
+     * @throws JsonProcessingException if JSON processing fails
+     */
+    private Set<String> parseElsstKeywords(String json) throws NoSuchElementException, JsonProcessingException {
+            Set<String> keywords = new HashSet<>();
+            com.fasterxml.jackson.databind.ObjectMapper localMapper = 
+                new com.fasterxml.jackson.databind.ObjectMapper();
+            
+            com.fasterxml.jackson.databind.JsonNode results = 
+                localMapper.readTree(json).path("results");
+            
+            if (results.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode r : results) {
+                    com.fasterxml.jackson.databind.JsonNode labels = r.path("labels");
+                    if (labels.isObject()) {
+                        java.util.Iterator<String> fieldNames = labels.fieldNames();
+                        while (fieldNames.hasNext()) {
+                            String fieldName = fieldNames.next();
+                            String value = labels.get(fieldName).asText();
+                            keywords.add(fieldName + ":\"" + value + "\"");
+                        }
+                    }
                 }
             }
+            return keywords;
         }
-        return keywords;
-    }
+
+   
 
     // ============================================================================
     // VOCABULARIES VALIDATION
