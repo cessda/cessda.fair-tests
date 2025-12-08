@@ -1,6 +1,8 @@
 # CESSDA FAIR Tests
 
-[![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_silver.png)](https://api.eu.badgr.io/public/assertions/SGiodTQYQPGTwKuZbpUiXA "SQAaaS silver badge achieved")
+[![SQAaaS badge]
+    (https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_silver.png)]
+    (https://api.eu.badgr.io/public/assertions/SGiodTQYQPGTwKuZbpUiXA "SQAaaS silver badge achieved")
 
 This repository contains the source code for CESSDA community-specific FAIR
 tests that validate data catalogue records against FAIR data principles.
@@ -30,7 +32,7 @@ The ELSST test implements strict validation requiring keywords to meet
 
 1. The DDI keyword element has `vocab="ELSST"`
 1. The DDI keyword element has a `vocabURI` attribute containing
-`"elsst.cessda.eu"`
+    `"elsst.cessda.eu"`
 1. The keyword text matches a label from the ELSST Topics API
 
 A record passes if at least one keyword meets all the specified validation
@@ -146,13 +148,13 @@ The CDC URL must:
 
 - Include the `/detail/{identifier}` path segment
 - Optionally include a `lang` query parameter (e.g., `?lang=en`) for ELSST API
-validation
+    validation
 
 ### Return Values
 
 - **Exit code 0** ("pass"): Record meets the validation criteria
 - **Exit code 1** ("fail" or "indeterminate"): Record does not meet criteria,
-or an error occurred
+    or an error occurred
 
 ## Project Structure
 
