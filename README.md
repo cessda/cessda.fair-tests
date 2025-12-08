@@ -2,50 +2,62 @@
 
 [![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_silver.png)](https://api.eu.badgr.io/public/assertions/SGiodTQYQPGTwKuZbpUiXA "SQAaaS silver badge achieved")
 
-This repository contains the source code for CESSDA community-specific FAIR tests that validate data catalogue records against FAIR data principles.
+This repository contains the source code for CESSDA community-specific FAIR
+tests that validate data catalogue records against FAIR data principles.
 
 ## Overview
 
-The FairTests utility provides four validation tests for CESSDA data catalogue records:
+The FairTests utility provides four validation tests for CESSDA data catalogue
+records:
 
 ### 1. Access Rights Validation
 
-Checks whether records contain approved Access Rights terms from the CESSDA vocabulary (e.g., "Open", "Restricted").
+Checks whether records contain approved Access Rights terms from the CESSDA
+vocabulary (e.g., "Open", "Restricted").
 
 ### 2. PID Schema Validation
 
-Validates that records use approved Persistent Identifier schemas from the CESSDA vocabulary (e.g., DOI, Handle, URN, ARK).
+Validates that records use approved Persistent Identifier schemas from the
+CESSDA vocabulary (e.g., DOI, Handle, URN, ARK).
 
 ### 3. ELSST Keyword Validation
 
-Verifies that records contain keywords from the ELSST (European Language Social Science Thesaurus) controlled vocabulary.
+Verifies that records contain keywords from the ELSST (European Language Social
+Science Thesaurus) controlled vocabulary.
 
-The ELSST test implements strict validation requiring keywords to meet **ALL three conditions** simultaneously:
+The ELSST test implements strict validation requiring keywords to meet
+**ALL three conditions** simultaneously:
 
 1. The DDI keyword element has `vocab="ELSST"`
-2. The DDI keyword element has a `vocabURI` attribute containing `"elsst.cessda.eu"`
-3. The keyword text matches a label from the ELSST Topics API
+1. The DDI keyword element has a `vocabURI` attribute containing
+`"elsst.cessda.eu"`
+1. The keyword text matches a label from the ELSST Topics API
 
-A record passes if at least one keyword meets all the specified validation criteria.
+A record passes if at least one keyword meets all the specified validation
+criteria.
 
 ### 4. DDI Recommended Vocabularies
 
-Verifies that the record uses the following recommended DDI vocabularies in the appropriate attributes:
+Verifies that the record uses the following recommended DDI vocabularies in the
+appropriate attributes:
 
 1. DDI Analysis Unit
-2. DDI Time Method
-3. DDI Mode of Collection
+1. DDI Time Method
+1. DDI Mode of Collection
 
-A record passes if it contains at least one recommended DDI controlled vocabulary.
+A record passes if it contains at least one recommended DDI controlled
+vocabulary.
 
 ### 5. DDI Optional Vocabulary (Sampling Procedure)
 
-Verifies that the record uses the DDI Sampling Procedure vocabulary in the appropriate attribute.
+Verifies that the record uses the DDI Sampling Procedure vocabulary in the
+appropriate attribute.
 A record passes if it contains at least one term from the vocabulary.
 
 ### 6. CESSDA Topic Classification Vocabulary
 
-Verifies that the record uses the Topic Classification vocabulary in the appropriate attribute.
+Verifies that the record uses the Topic Classification vocabulary in the
+appropriate attribute.
 A record passes if it contains at least one term from the vocabulary.
 
 ## Prerequisites
@@ -55,9 +67,9 @@ Java 21 or greater is required to build and run this application.
 ## Quick Start
 
 1. Check prerequisites and install any required software.
-2. Clone the repository to your local workspace.
-3. Build the application using `mvn clean verify`.
-4. Run the application using one of the following methods:
+1. Clone the repository to your local workspace.
+1. Build the application using `mvn clean verify`.
+1. Run the application using one of the following methods:
 
 ### Using Maven Exec Plugin
 
@@ -71,7 +83,8 @@ mvn -Dexec.mainClass=cessda.fairtests.FairTests \
 
 ```bash
 mvn clean package
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar <test-type> <CDC URL>
+java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar <test-type> \
+    <CDC URL>
 ```
 
 ## Example Usage
@@ -132,12 +145,14 @@ java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar topic-class \
 The CDC URL must:
 
 - Include the `/detail/{identifier}` path segment
-- Optionally include a `lang` query parameter (e.g., `?lang=en`) for ELSST API validation
+- Optionally include a `lang` query parameter (e.g., `?lang=en`) for ELSST API
+validation
 
 ### Return Values
 
 - **Exit code 0** ("pass"): Record meets the validation criteria
-- **Exit code 1** ("fail" or "indeterminate"): Record does not meet criteria, or an error occurred
+- **Exit code 1** ("fail" or "indeterminate"): Record does not meet criteria,
+or an error occurred
 
 ## Project Structure
 
@@ -166,20 +181,20 @@ This project uses the standard Maven project structure.
 The test:
 
 1. Fetches DDI metadata via OAI-PMH endpoint
-2. Extracts values from `typeOfAccess` elements using XPath
-3. Retrieves list of terms from CESSDA vocabulary API
-4. Compares each attribute value against list of terms
-5. Returns "pass" if any approved term is found
+1. Extracts values from `typeOfAccess` elements using XPath
+1. Retrieves list of terms from CESSDA vocabulary API
+1. Compares each attribute value against list of terms
+1. Returns "pass" if any approved term is found
 
 ### PID Schema Validation
 
 The test:
 
 1. Fetches DDI metadata via OAI-PMH endpoint
-2. Extracts `IDNo` elements with `agency` attributes using XPath
-3. Retrieves list of PID terms from CESSDA vocabulary API
-4. Compares each attribute value against list of terms
-5. Returns "pass" if any term matches any value
+1. Extracts `IDNo` elements with `agency` attributes using XPath
+1. Retrieves list of PID terms from CESSDA vocabulary API
+1. Compares each attribute value against list of terms
+1. Returns "pass" if any term matches any value
 
 ### ELSST Keyword Validation
 
@@ -187,7 +202,8 @@ The test uses a two-phase validation approach:
 
 #### Phase 1: Attribute Validation
 
-The test examines all `<keyword>` elements in the DDI metadata and identifies candidates that have:
+The test examines all `<keyword>` elements in the DDI metadata and identifies
+candidates that have:
 
 - `vocab` attribute equal to `"ELSST"` **AND**
 - `vocabURI` attribute containing `"elsst.cessda.eu"`
@@ -200,46 +216,49 @@ For candidate keywords from Phase 1, the test:
 - Compares the keyword text (case-insensitive) against returned labels
 - Returns "pass" immediately when a match is found
 
-Keywords missing either required attribute are excluded from validation, even if they might match ELSST API labels.
+Keywords missing either required attribute are excluded from validation,
+even if they might match ELSST API labels.
 
 ### Approved DDI Vocabularies Validation
 
 The test:
 
 1. Fetches DDI metadata via OAI-PMH endpoint
-2. For each of Analysis Unit, Time Method, Mode of Collection:
+1. For each of Analysis Unit, Time Method, Mode of Collection:
     1. Extracts relevant attributes using XPath
-    2. Retrieves list of terms from CESSDA vocabulary API
-    3. Compares each attribute value against the list of terms
-3. Returns "pass" if any term matches any value
+    1. Retrieves list of terms from CESSDA vocabulary API
+    1. Compares each attribute value against the list of terms
+1. Returns "pass" if any term matches any value
 
 ### DDI Sampling Procedure Vocabulary Validation
 
 The test:
 
 1. Fetches DDI metadata via OAI-PMH endpoint
-2. Extracts `sampProc` attribute values using XPath
-3. Retrieves list of Sampling Procedure terms from CESSDA vocabulary API
-4. Compares each attribute value against list of terms
-5. Returns "pass" if any term matches any value
+1. Extracts `sampProc` attribute values using XPath
+1. Retrieves list of Sampling Procedure terms from CESSDA vocabulary API
+1. Compares each attribute value against list of terms
+1. Returns "pass" if any term matches any value
 
 ### CESSDA Topic Classification Vocabulary Validation
 
 The test:
 
 1. Fetches DDI metadata via OAI-PMH endpoint
-2. Extracts `topcClas` attribute values using XPath
-3. Retrieves list of Topic Classification terms from CESSDA vocabulary API
-4. Compares each attribute value against list of terms
-5. Returns "pass" if any term matches any value
+1. Extracts `topcClas` attribute values using XPath
+1. Retrieves list of Topic Classification terms from CESSDA vocabulary API
+1. Compares each attribute value against list of terms
+1. Returns "pass" if any term matches any value
 
 ## Technical Details
 
 - **Language**: Java 21
-- **Dependencies**: Jackson (JSON parsing), Java HTTP Client, javax.xml (XML/XPath processing)
+- **Dependencies**: Jackson (JSON parsing), Java HTTP Client, javax.xml
+    (XML/XPath processing)
 - **Concurrency**: Uses virtual threads for parallel ELSST API queries
 - **Timeouts**: 10-second connect timeout, 30-second request timeout
-- **Standards**: DDI 2.5 metadata via OAI-PMH, CESSDA controlled vocabularies, DDI controlled vocabularies
+- **Standards**: DDI 2.5 metadata via OAI-PMH, CESSDA controlled vocabularies,
+    DDI controlled vocabularies
 - **Caching**: Vocabulary terms are cached to reduce API calls
 
 ### Shared Components
@@ -269,7 +288,8 @@ The application integrates with the following services and hosted vocabularies:
 
 ## Description
 
-See the [Description](Description.md) file for comprehensive technical documentation including:
+See the [Description](Description.md) file for comprehensive technical
+documentation including:
 
 - Detailed API integration information
 - XML processing and XPath expressions
@@ -301,7 +321,8 @@ mvn clean package
 This creates two JAR files in the `target/` directory:
 
 - `fair-tests-1.0.0.jar` - Standard JAR
-- `fair-tests-1.0.0-jar-with-dependencies.jar` - Executable JAR with all dependencies
+- `fair-tests-1.0.0-jar-with-dependencies.jar` - Executable JAR with all
+    dependencies
 
 ### Generate documentation
 
@@ -313,7 +334,8 @@ Documentation will be available in `target/site/apidocs/`
 
 ## Contributing
 
-Please read [CONTRIBUTING](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING](CONTRIBUTING.md) for details on our code of conduct,
+and the process for submitting pull requests to us.
 
 ## Versioning
 
