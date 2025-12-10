@@ -79,61 +79,116 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class FairTests {
 
-    // Common constants
+    // Namespace and URL constants
     private static final String DDI_NAMESPACE = "ddi:codebook:2_5";
-    private static final String OAI_PMH_BASE = "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=";
+    // OAI-PMH endpoint base URL
+    private static final String OAI_PMH_BASE =
+        "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=";
+    // Detail URL segment
     private static final String DETAIL_SEGMENT = "/detail/";
+    // Result constants
     private static final String RESULT_PASS = "pass";
+    // Result constants
     private static final String RESULT_FAIL = "fail";
+    // Result constants 
     private static final String RESULT_INDETERMINATE = "indeterminate";
+    // Logging messages
     private static final String DOC_PROC_ERROR = "Error processing document: ";
+    // Logging messages
     private static final String ERROR = "Error: ";
+    // HTTP header constants
     private static final String HEAD_ACCEPT = "Accept";
+    // Logging messages
     private static final String FETCHED = "Fetched ";
 
     // XPath expressions
-    private static final String ACCESS_RIGHTS_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess";
-    private static final String PID_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo";
-    private static final String KEYWORD_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword";
-    private static final String TOPIC_CLASS_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas";
-    private static final String ANALYSIS_UNIT_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit";
-    private static final String TIME_METHOD_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth";
-    private static final String SAMPLING_PROC_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc";
-    private static final String COLLECTION_MODE_PATH = "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode";
+    private static final String ACCESS_RIGHTS_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess";
+    // PID XPath expression
+    private static final String PID_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo";
+    // Keyword XPath expression
+    private static final String KEYWORD_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword";
+    // Topic Classification XPath expression
+    private static final String TOPIC_CLASS_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas";
+    // Recommended DDI vocabularies XPath expressions
+    private static final String ANALYSIS_UNIT_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit";
+    // Time Method XPath expression
+    private static final String TIME_METHOD_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth";
+    // Sampling Procedure XPath expression
+    private static final String SAMPLING_PROC_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc";
+    // Mode of Collection XPath expression
+    private static final String COLLECTION_MODE_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode";
 
-    // Vocabulary URLs
-    private static final String ACCESS_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
-    private static final String PID_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
-    private static final String ELSST_API_BASE = "https://skg-if-openapi.cessda.eu/api/topics";
-    private static final String TOPIC_CLASS_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.0.0?languageVersion=en-4.0.0&format=json";
-    private static final String ANALYSIS_UNIT_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/1.2.0?languageVersion=en-1.2.0&format=json";
-    private static final String TIME_METHOD_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.1?languageVersion=en-1.2.1&format=json";
-    private static final String SAMPLING_PROC_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.0?languageVersion=en-2.0.0&format=json";
-    private static final String COLLECTION_MODE_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/4.0.0?languageVersion=en-4.0.0&format=json";
+    // Access Rights vocabulary URL
+    private static final String ACCESS_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
+    // PID vocabulary URL
+    private static final String PID_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
+    // ELSST API and vocabulary URLs
+    private static final String ELSST_API_BASE =
+        "https://skg-if-openapi.cessda.eu/api/topics";
+    // Topic Classification vocabulary URL
+    private static final String TOPIC_CLASS_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.0.0?languageVersion=en-4.0.0&format=json";
+    // Recommended DDI vocabularies URLs
+    private static final String ANALYSIS_UNIT_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/1.2.0?languageVersion=en-1.2.0&format=json";
+    // Time Method vocabulary URL
+    private static final String TIME_METHOD_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.1?languageVersion=en-1.2.1&format=json";
+    // Sampling Procedure vocabulary URL
+    private static final String SAMPLING_PROC_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.0?languageVersion=en-2.0.0&format=json";
+    // Mode of Collection vocabulary URL
+    private static final String COLLECTION_MODE_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/4.0.0?languageVersion=en-4.0.0&format=json";
 
-    // ELSST constants
+    // ELSST vocab name constant
     private static final String ELSST_VOCAB_NAME = "ELSST";
+    // ELSST vocabURI substring
     private static final String ELSST_URI_SUBSTRING = "elsst.cessda.eu";
 
     // Topic Classification constant
-    private static final String TOPIC_CLASS_VOCAB_NAME = "CESSDA Topic Classification";
+    private static final String TOPIC_CLASS_VOCAB_NAME =
+        "CESSDA Topic Classification";
 
-    // Shared components
+    // HTTP client instance
     private final HttpClient httpClient;
+    // JSON Object mapper
     private final ObjectMapper mapper;
+    // XML Document builder factory
     private final DocumentBuilderFactory documentBuilderFactory;
+    // XPath factory
     private final XPathFactory xPathFactory;
-    private static final Logger logger = Logger.getLogger(FairTests.class.getName());
+    // Logger instance
+    private static final Logger logger =
+        Logger.getLogger(FairTests.class.getName());
 
-    // Cached vocabularies
+    // Access Rights cache
     private static volatile Set<String> cachedAccessRightsTerms;
+    // PID schema cache
     private static volatile Set<String> cachedPidSchemas;
+    // Topic Classification cache
     private static volatile Set<String> cachedTopicClassTerms;
+    // Analysis Unit cache
     private static volatile Set<String> cachedAnalysisUnitTerms;
+    // Time Method cache
     private static volatile Set<String> cachedTimeMethodTerms;
+    // Sampling Procedure cache
     private static volatile Set<String> cachedSamplingProcTerms;
+    // Mode of Collection cache
     private static volatile Set<String> cachedCollectionModeTerms;
+    // ELSST keywords cache
     private volatile Set<String> cachedElsstKeywords;
+    // Language code extracted from URL
     private String languageCode;
 
     /**
@@ -197,8 +252,8 @@ public class FairTests {
     }
 
     /**
-     * Checks whether a CESSDA record contains ELSST keywords that meet ALL three
-     * criteria:
+     * Checks whether a CESSDA record contains ELSST keywords that meet ALL
+     * three criteria:
      * 1. vocab attribute equals "ELSST"
      * 2. vocabURI attribute contains "elsst.cessda.eu"
      * 3. Keyword text matches an ELSST API label
@@ -226,7 +281,8 @@ public class FairTests {
     }
 
     /**
-     * Checks whether a CESSDA record uses recommended DDI controlled vocabularies.
+     * Checks whether a CESSDA record uses recommended DDI controlled
+     * vocabularies.
      * Tests for presence of:
      * - DDI Analysis Unit
      * - DDI Time Method
@@ -252,7 +308,8 @@ public class FairTests {
     }
 
     /**
-     * Checks whether a CESSDA record uses Topic Classification vocabulary terms.
+     * Checks whether a CESSDA record uses Topic Classification vocabulary
+     * terms.
      *
      * @param url The CESSDA detail URL
      * @return "pass", "fail", or "indeterminate"
@@ -456,10 +513,6 @@ public class FairTests {
      * @return Set of approved Access Rights terms
      */
     private Set<String> getApprovedAccessRights() {
-        if (cachedAccessRightsTerms != null && !cachedAccessRightsTerms.isEmpty()) {
-            return cachedAccessRightsTerms;
-        }
-
         synchronized (FairTests.class) {
             if (cachedAccessRightsTerms != null && !cachedAccessRightsTerms.isEmpty()) {
                 return cachedAccessRightsTerms;
@@ -487,11 +540,13 @@ public class FairTests {
 
     /**
      * Default Access Rights terms if vocabulary fetch fails.
+     * Use the COAR Access Rights vocabulary https://vocabularies.coar-repositories.org/access_rights/
+     * See https://github.com/cessda/cessda.metadata.profiles/issues/262#issuecomment-3631980949 for details.
      * 
      * @return Set of default Access Rights terms
      */
     private static Set<String> defaultAccessRightsTerms() {
-        return Set.of("Open", "Restricted");
+        return Set.of("open access", "restricted access");
     }
 
     // ============================================================================
@@ -1271,7 +1326,7 @@ public class FairTests {
      * 
      * @param args
      *             args[0]: test type ("access-rights", "pid", "elsst-keywords",
-     *             "ddi-vocabs, ddi-sampleproc, topoc-class")
+     *             "ddi-vocabs, ddi-sampleproc, topic-class")
      *             args[1]: CESSDA detail URL
      * 
      */
