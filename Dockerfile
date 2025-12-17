@@ -16,39 +16,33 @@
 # ===== Stage 1: Build =====
 FROM eclipse-temurin:21-jdk AS builder
 
-# Install Maven in the build stage
-RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
-
 # Define environment variables
-ENV APP_HOME=/opt/cessda/fair-tests
-WORKDIR $APP_HOME
+WORKDIR /opt/cessda/fair-tests
+
+# Copy Maven Wrapper
+COPY mvnw .
+COPY .mvn/wrapper/maven-wrapper.properties .mvn/wrapper/maven-wrapper.properties
 
 # Copy Maven project files
 COPY pom.xml .
 
 # Pre-fetch dependencies for faster incremental builds
-RUN mvn dependency:go-offline -B
+RUN ./mvnw dependency:go-offline -B
 
-# Copy the actual source code
-COPY src ./src
+# Copy the application source code
+COPY . .
 
 # Build the JAR
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean verify -DskipTests
 
 # ===== Stage 2: Runtime =====
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre AS runtime
 
-# Environment variables for runtime config
-ENV APP_HOME=/opt/cessda/fair-tests \
-    APP_NAME=fair-tests-1.0.0-jar-with-dependencies.jar \
-    TEST_TYPE="" \
-    URL=""
-
-WORKDIR $APP_HOME
+WORKDIR /opt/cessda/fair-tests
 
 # Copy the built JAR from the build stage
-COPY --from=builder $APP_HOME/target/*.jar $APP_HOME/$APP_NAME
+COPY --from=builder /opt/cessda/fair-tests/target/*-with-dependencies.jar fair-tests.jar
 
 # Entrypoint — run the Java class with the CDC URL passed as an argument
-ENTRYPOINT ["sh", "-c", "java -cp $APP_HOME/$APP_NAME \"${TEST_TYPE}\" \"${URL}\""]
+ENTRYPOINT ["java", "-jar", "/opt/cessda/fair-tests/fair-tests.jar"]
 

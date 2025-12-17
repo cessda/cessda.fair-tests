@@ -1,5 +1,19 @@
 package cessda.fairtests;
 
+/**
+ * Result of the FAIR test
+ */
 public enum Result {
-    PASS, FAIL, INDETERMINATE
+    /**
+     * Test passed
+     */
+    PASS,
+    /**
+     * Test failed
+     */
+    FAIL,
+    /**
+     * Test encountered an error
+     */
+    INDETERMINATE
 }

@@ -50,23 +50,23 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * <h1>FairTests</h1>
- * <p>
+ * <H2>FairTests</H2>
+ * <P>
  * Consolidated utility class for checking CESSDA Data Catalogue records against
  * various FAIR data criteria:
  * - Access Rights compliance
  * - Persistent Identifier (PID) schema validation
  * - ELSST controlled vocabulary keyword validation
- * <p>
+ * <P>
  * All tests fetch DDI 2.5 metadata via the CESSDA OAI-PMH endpoint and validate
  * against approved vocabularies from the CESSDA vocabulary service.
- * <p>
+ * <P>
  * Return values for all tests:
- * <ul>
- *     <li>"pass": the record meets the criteria</li>
- *     <li>"fail": the record does not meet the criteria</li>
- *     <li>"indeterminate": an error occurred preventing definitive determination</li>
- * </ul>
+ * <UL>
+ *     <LI>"pass": the record meets the criteria</LI>
+ *     <LI>"fail": the record does not meet the criteria</LI>
+ *     <LI>"indeterminate": an error occurred preventing definitive determination</LI>
+ * </UL>
  */
 public class FairTests {
 
@@ -101,6 +101,8 @@ public class FairTests {
     /**
      * Constructor initialises shared components.
      *
+     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
+     * @throws XPathExpressionException if any constant XPaths cannot be compiled.
      */
     public FairTests() throws ParserConfigurationException, XPathExpressionException {
         var documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -133,7 +135,9 @@ public class FairTests {
      *
      * @param args args[0]: test type ("access-rights", "pid", "elsst-keywords")
      *             args[1]: CESSDA detail URL
-     *
+     * @throws ParseException if the command line is invalid.
+     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
+     * @throws XPathExpressionException if any constant XPaths cannot be compiled.
      */
     public static void main(String[] args) throws ParseException, ParserConfigurationException, XPathExpressionException {
 
@@ -223,9 +227,11 @@ public class FairTests {
 
     /**
      * Checks whether a CESSDA record contains ELSST keywords that meet ALL three criteria:
-     * 1. vocab attribute equals "ELSST"
-     * 2. vocabURI attribute contains "elsst.cessda.eu"
-     * 3. Keyword text matches an ELSST API label
+     * <OL>
+     *     <LI>vocab attribute equals "ELSST"</LI>
+     *     <LI>vocabURI attribute contains "elsst.cessda.eu"</LI>
+     *     <LI>Keyword text matches an ELSST API label</LI>
+     * </OL>
      *
      * @param url The CESSDA detail URL
      * @return "pass", "fail", or "indeterminate"
@@ -378,7 +384,7 @@ public class FairTests {
             logger.log(Level.INFO, "No approved PID schemas found in record: {0}", recordId);
             return Result.FAIL;
         } catch (XPathExpressionException e) {
-            logger.severe("Error checking document for approved PID: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error checking document for approved PID: {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
