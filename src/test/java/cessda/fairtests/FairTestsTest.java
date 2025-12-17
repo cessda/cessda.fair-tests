@@ -17,23 +17,6 @@
 
 package cessda.fairtests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayInputStream;
-import java.lang.reflect.Field;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Set;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,12 +24,27 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.w3c.dom.Document;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 class FairTestsTest {
 
     private FairTests tests;
     private HttpClient mockClient;
-    private HttpResponse<byte[]> mockByteResponse;
-    private HttpResponse<String> mockStringResponse;
+    private HttpResponse<InputStream> mockByteResponse;
+    private HttpResponse<InputStream> mockStringResponse;
     private MockedStatic<FairTests> logMock;
 
     @BeforeEach
@@ -85,7 +83,7 @@ class FairTestsTest {
                 .thenReturn(mockByteResponse);
 
         when(mockByteResponse.statusCode()).thenReturn(200);
-        when(mockByteResponse.body()).thenReturn(xml.getBytes(StandardCharsets.UTF_8));
+        when(mockByteResponse.body()).thenReturn(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
     }
 
     private void mockJsonResponse(String json) throws Exception {
@@ -93,7 +91,7 @@ class FairTestsTest {
                 .thenReturn(mockStringResponse);
 
         when(mockStringResponse.statusCode()).thenReturn(200);
-        when(mockStringResponse.body()).thenReturn(json);
+        when(mockStringResponse.body()).thenReturn(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
     }
 
     // =============================
@@ -103,7 +101,7 @@ class FairTestsTest {
     class IdentifierExtractionTests {
 
         @Test
-        void extractsIdCorrectly() {
+        void extractsIdCorrectly() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
             String id = TestsHelper.invokeExtractRecordIdentifier(tests,
                     "https://catalog/detail/ABC123?lang=en");
             assertEquals("ABC123", id);
@@ -111,7 +109,7 @@ class FairTestsTest {
 
         @Test
         void throwsOnMissingDetailSegment() {
-            assertThrows(RuntimeException.class,
+            assertThrows(InvocationTargetException.class,
                     () -> TestsHelper.invokeExtractRecordIdentifier(tests, "https://example.com/no"));
         }
     }
@@ -124,6 +122,8 @@ class FairTestsTest {
 
         @Test
         void passesWhenApprovedTermFound() throws Exception {
+            tests.cachedAccessRightsTerms.add("Open");
+
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                   <ddi:codeBook>
@@ -136,8 +136,8 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            String result = tests.containsApprovedAccessRights("http://x/detail/ID123");
-            assertEquals("indeterminate", result);
+            Result result = tests.containsApprovedAccessRights("http://x/detail/ID123");
+            assertEquals(Result.PASS, result);
         }
 
         @Test
@@ -154,8 +154,8 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            String result = tests.containsApprovedAccessRights("http://x/detail/ID999");
-            assertEquals("indeterminate", result);
+            Result result = tests.containsApprovedAccessRights("http://x/detail/ID999");
+            assertEquals(Result.FAIL, result);
         }
     }
 
@@ -169,7 +169,7 @@ class FairTestsTest {
         void passesWhenApprovedPidFound() throws Exception {
 
             // Mock vocabulary
-            TestsHelper.setStaticSet(FairTests.class, "cachedPidSchemas", Set.of("DOI"));
+            tests.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -185,14 +185,14 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            String r = tests.containsApprovedPid("http://x/detail/P1");
-            assertEquals("pass", r);
+            Result r = tests.containsApprovedPid("http://x/detail/P1");
+            assertEquals(Result.PASS, r);
         }
 
         @Test
         void failsWhenPidNotApproved() throws Exception {
 
-            TestsHelper.setStaticSet(FairTests.class, "cachedPidSchemas", Set.of("DOI"));
+            tests.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -208,7 +208,7 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            assertEquals("fail", tests.containsApprovedPid("http://x/detail/P2"));
+            assertEquals(Result.FAIL, tests.containsApprovedPid("http://x/detail/P2"));
         }
     }
 
@@ -220,7 +220,7 @@ class FairTestsTest {
 
         @Test
         void passesWhenTermMatchesVocabulary() throws Exception {
-            TestsHelper.setStaticSet(FairTests.class, "cachedTopicClassTerms", Set.of("Socioeconomics"));
+            tests.cachedTopicClassTerms.add("Socioeconomics");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -236,13 +236,13 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            String result = tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1");
-            assertEquals("pass", result);
+            Result result = tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1");
+            assertEquals(Result.PASS, result);
         }
 
         @Test
         void failsWhenTermNotApproved() throws Exception {
-            TestsHelper.setStaticSet(FairTests.class, "cachedTopicClassTerms", Set.of("Approved"));
+            tests.cachedTopicClassTerms.add("Approved");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -258,7 +258,7 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            assertEquals("fail", tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
+            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
         }
     }
 
@@ -270,7 +270,7 @@ class FairTestsTest {
 
         @Test
         void passesWhenAnyRecommendedVocabFound() throws Exception {
-            TestsHelper.setStaticSet(FairTests.class, "cachedAnalysisUnitTerms", Set.of("Individual"));
+            tests.cachedAnalysisUnitTerms.add("Individual");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -286,13 +286,12 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            assertEquals("pass",
-                    tests.containsRecommendedDdiVocabularies("http://x/detail/DDI1"));
+            assertEquals(Result.PASS, tests.containsRecommendedDdiVocabularies("http://x/detail/DDI1"));
         }
 
         @Test
         void failsWhenNoneFound() throws Exception {
-            TestsHelper.setStaticSet(FairTests.class, "cachedAnalysisUnitTerms", Set.of("X"));
+            tests.cachedAnalysisUnitTerms.add("X");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -302,8 +301,7 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            assertEquals("fail",
-                    tests.containsRecommendedDdiVocabularies("http://x/detail/DDI2"));
+            assertEquals(Result.FAIL, tests.containsRecommendedDdiVocabularies("http://x/detail/DDI2"));
         }
     }
 
@@ -316,7 +314,7 @@ class FairTestsTest {
         @Test
         void passesWhenTermMatchesVocabulary() throws Exception {
 
-            TestsHelper.setStaticSet(FairTests.class, "cachedSamplingProcTerms", Set.of("Quota Sampling"));
+            tests.cachedSamplingProcTerms.add("Quota Sampling");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -326,13 +324,13 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            String result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
-            assertEquals("pass", result);
+            Result result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
+            assertEquals(Result.PASS, result);
         }
 
         @Test
         void failsWhenNotFound() throws Exception {
-            TestsHelper.setStaticSet(FairTests.class, "cachedSamplingProcTerms", Set.of("A"));
+            tests.cachedSamplingProcTerms.add("A");
 
             mockXmlResponse("""
                 <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -342,7 +340,7 @@ class FairTestsTest {
                 </OAI-PMH>
             """);
 
-            assertEquals("fail", tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
+            assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
         }
     }
 }

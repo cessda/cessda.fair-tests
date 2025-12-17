@@ -45,38 +45,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * <H2>FairTests</H2>
@@ -109,45 +80,10 @@ public class FairTests {
     private static final String OAI_PMH_BASE = "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=";
     // Detail URL segment
     private static final String DETAIL_SEGMENT = "/detail/";
-    // Result constants
-    private static final String RESULT_PASS = "pass";
-    // Result constants
-    private static final String RESULT_FAIL = "fail";
-    // Result constants
-    private static final String RESULT_INDETERMINATE = "indeterminate";
-    // Logging messages
-    private static final String DOC_PROC_ERROR = "Error processing document: ";
     // Logging messages
     private static final String ERROR = "Error: ";
-    // HTTP header constants
-    private static final String HEAD_ACCEPT = "Accept";
     // Logging messages
     private static final String FETCHED = "Fetched ";
-
-    // XPath expressions
-    private static final String ACCESS_RIGHTS_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess";
-    // PID XPath expression
-    private static final String PID_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo";
-    // Keyword XPath expression
-    private static final String KEYWORD_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword";
-    // Topic Classification XPath expression
-    private static final String TOPIC_CLASS_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas";
-    // Recommended DDI vocabularies XPath expressions
-    private static final String ANALYSIS_UNIT_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit";
-    // Time Method XPath expression
-    private static final String TIME_METHOD_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth";
-    // Sampling Procedure XPath expression
-    private static final String SAMPLING_PROC_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc";
-    // Mode of Collection XPath expression
-    private static final String COLLECTION_MODE_PATH =
-        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode";
 
     // Access Rights vocabulary URL
     private static final String ACCESS_VOCAB_URL =
@@ -187,11 +123,26 @@ public class FairTests {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
     private final XPath xPath = XPathFactory.newInstance().newXPath();
+
+    // Cached vocabularies
+    final ConcurrentSkipListSet<String> cachedAccessRightsTerms = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedAnalysisUnitTerms = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedCollectionModeTerms = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedElsstKeywords = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedPidSchemas = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedSamplingProcTerms = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedTimeMethodTerms = new ConcurrentSkipListSet<>();
+    final ConcurrentSkipListSet<String> cachedTopicClassTerms = new ConcurrentSkipListSet<>();
     // XPath expressions
-    private final XPathExpression accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess");
-    private final XPathExpression ddiCodebookXPath = xPath.compile("//ddi:codeBook");
-    private final XPathExpression pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
-    private final XPathExpression keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
+    private final XPathExpression ddiCodebookXPath;
+    private final XPathExpression accessRightsXPath;
+    private final XPathExpression analysisUnitXPath;
+    private final XPathExpression collectionModeXPath;
+    private final XPathExpression keywordXPath;
+    private final XPathExpression pidXPath;
+    private final XPathExpression samplingProcXPath;
+    private final XPathExpression timeMethodXPath;
+    private final XPathExpression topicClassXPath;
     /**
      * Constructor initialises shared components.
      *
@@ -217,12 +168,18 @@ public class FairTests {
                 return null;
             }
         });
-    }
 
-    // Cached vocabularies
-    private final ConcurrentSkipListSet<String> cachedAccessRightsTerms = new ConcurrentSkipListSet<>();
-    private final ConcurrentSkipListSet<String> cachedPidSchemas = new ConcurrentSkipListSet<>();
-    private final ConcurrentSkipListSet<String> cachedElsstKeywords = new ConcurrentSkipListSet<>();
+        // Compile XPaths - this happens after the namespace context is set up
+        ddiCodebookXPath = xPath.compile("//ddi:codeBook");
+        accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess");
+        analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
+        collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
+        keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
+        pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
+        samplingProcXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc");
+        timeMethodXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth");
+        topicClassXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas");
+    }
 
     /**
      * Main method for command-line execution.
@@ -263,6 +220,9 @@ public class FairTests {
             case ACCESS_RIGHTS -> tests.containsApprovedAccessRights(url);
             case PID -> tests.containsApprovedPid(url);
             case ELSST_KEYWORDS -> tests.containsElsstKeywords(url);
+            case DDI_VOCABS -> tests.containsRecommendedDdiVocabularies(url);
+            case DDI_SAMPLEPROC -> tests.containsDdiSamplingProcedureTerms(url);
+            case TOPIC_CLASS -> tests.containsCessdaTopicClassificationTerms(url);
         };
 
         logger.log(Level.INFO, "Result: {0}", result);
@@ -357,20 +317,16 @@ public class FairTests {
      * @param url The CESSDA detail URL
      * @return "pass", "fail", or "indeterminate"
      */
-    public String containsRecommendedDdiVocabularies(String url) {
+    public Result containsRecommendedDdiVocabularies(String url) {
         try {
             String recordId = extractRecordIdentifier(url);
-            logInfo("Checking CESSDA vocabularies for record: " + recordId);
-
+            logger.log(Level.INFO, "Checking CESSDA vocabularies for record: {0}", recordId);
             Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
             return checkRecommendedDdiVocabularies(doc, recordId);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logSevere(DOC_PROC_ERROR + e.getMessage());
-        } catch (Exception e) {
-            logSevere(ERROR + e.getMessage());
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
         }
-        return RESULT_INDETERMINATE;
     }
 
     /**
@@ -380,21 +336,16 @@ public class FairTests {
      * @param url The CESSDA detail URL
      * @return "pass", "fail", or "indeterminate"
      */
-    public String containsCessdaTopicClassificationTerms(String url) {
+    public Result containsCessdaTopicClassificationTerms(String url) {
         try {
             String recordId = extractRecordIdentifier(url);
-            XPath xpath = createXPath();
-            logInfo("Checking Topic Classification for record: " + recordId);
-
+            logger.log(Level.INFO, "Checking Topic Classification for record: {0}", recordId);
             Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkCessdaTopicClassification(xpath, doc, recordId);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logSevere(DOC_PROC_ERROR + e.getMessage());
-        } catch (Exception e) {
-            logSevere(ERROR + e.getMessage());
+            return checkCessdaTopicClassification(doc, recordId);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
         }
-        return RESULT_INDETERMINATE;
     }
 
      /**
@@ -403,18 +354,16 @@ public class FairTests {
      * @param url The CESSDA detail URL
      * @return "pass", "fail", or "indeterminate"
      */
-    public String containsDdiSamplingProcedureTerms(String url) {
+     public Result containsDdiSamplingProcedureTerms(String url) {
         try {
             String recordId = extractRecordIdentifier(url);
-            logInfo("Checking Sampling Procedure for record: " + recordId);
+            logger.log(Level.INFO, "Checking Sampling Procedure for record: {0}", recordId);
 
             Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
             return checkDdiSamplingProcedure(doc, recordId);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logSevere(DOC_PROC_ERROR + e.getMessage());
-        } catch (Exception e) {
-            logSevere(ERROR + e.getMessage());
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
         }
     }
 
@@ -434,29 +383,6 @@ public class FairTests {
             throw new IllegalArgumentException("No record identifier in URL: " + url);
         }
         return id;
-    }
-
-    /**
-     * Extract the language code from the URL query parameter.
-     *
-     * @param url The CESSDA detail URL
-     */
-    private void extractLanguageCodeFromUrl(String url) {
-        try {
-            URI uri = URI.create(url);
-            String query = uri.getQuery();
-            if (query == null)
-                return;
-            for (String param : query.split("&")) {
-                String[] kv = param.split("=", 2);
-                if (kv.length == 2 && kv[0].equalsIgnoreCase("lang") && kv[1].matches("^[a-zA-Z]{2}$")) {
-                    languageCode = kv[1].toLowerCase();
-                    return;
-                }
-            }
-        } catch (Exception e) {
-            logSevere("URL Exception: " + e.getMessage());
-        }
     }
 
     /**
@@ -663,44 +589,6 @@ public class FairTests {
         }
     }
 
-    // ============================================================================
-    // ELSST KEYWORD VALIDATION
-    // ============================================================================
-    /**
-     * Extract candidate keywords from the NodeList.
-     *
-     * @param nodes The NodeList of keyword elements
-     * @return List of KeywordCandidate objects
-     */
-    private List<KeywordCandidate> extractKeywordCandidates(NodeList nodes) {
-        List<KeywordCandidate> candidates = new ArrayList<>();
-
-        for (int i = 0; i < nodes.getLength(); i++) {
-            Element keywordElement = (Element) nodes.item(i);
-            String text = keywordElement.getTextContent().trim();
-            String vocab = keywordElement.getAttribute("vocab");
-            String vocabURI = keywordElement.getAttribute("vocabURI");
-
-            boolean hasVocab = ELSST_VOCAB_NAME.equalsIgnoreCase(vocab);
-            boolean hasVocabURI = vocabURI != null && vocabURI.toLowerCase().contains(ELSST_URI_SUBSTRING);
-
-            if (hasVocab && hasVocabURI && !text.isEmpty()) {
-                candidates.add(new KeywordCandidate(text, hasVocab, hasVocabURI));
-                logInfo("Candidate keyword found: " + text);
-            }
-        }
-
-        return candidates;
-    }
-
-    /**
-     * Keyword candidate data class.
-     */
-    private static class KeywordCandidate {
-        final String text;
-        final boolean hasVocab;
-        final boolean hasVocabURI;
-
     private Set<String> getApprovedPidSchemas() {
         if (!cachedPidSchemas.isEmpty()) {
             return cachedPidSchemas;
@@ -791,11 +679,339 @@ public class FairTests {
         return cachedElsstKeywords;
     }
 
+    // ============================================================================
+    // VOCABULARIES VALIDATION
+    // ============================================================================
+
+    /**
+     * Check the DDI document for recommended DDI controlled vocabularies.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return "pass", "fail", or "indeterminate"
+     */
+    private Result checkRecommendedDdiVocabularies(Document ddiDoc, String recordId) {
+
+        // Check Analysis Unit
+        boolean foundAny = checkAnalysisUnit(ddiDoc, recordId)
+            || checkTimeMethod(ddiDoc, recordId)
+            || checkCollectionMode(ddiDoc, recordId);
+
+        if (foundAny) {
+            logger.info("Record contains at least one recommended DDI controlled vocabulary");
+            return Result.PASS;
+        } else {
+            logger.log(Level.INFO, "No recommended DDI vocabularies found in record: {0}", recordId);
+            return Result.FAIL;
+        }
+    }
+
+    /**
+     * Check for CESSDA Topic Classification in the DDI document.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return "pass", "fail", or "indeterminate"
+     */
+    private Result checkCessdaTopicClassification(Document ddiDoc, String recordId) {
+        try {
+            NodeList nodes = (NodeList) topicClassXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            if (nodes == null || nodes.getLength() == 0) {
+                logger.info("No Topic Classification elements found");
+                return Result.FAIL;
+            }
+
+            Set<String> approvedTerms = getApprovedTopicClassTerms();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                Element element = (Element) nodes.item(i);
+                String vocabAttr = element.getAttribute("vocab");
+                String text = element.getTextContent().trim();
+
+                if (TOPIC_CLASS_VOCAB_NAME.equals(vocabAttr) && !text.isEmpty() &&
+                    approvedTerms.contains(text)) {
+                    logger.log(Level.INFO, "Found CESSDA Topic Classification : {0}", text);
+                    return Result.PASS;
+                }
+
+            }
+            logger.log(Level.INFO, "No approved Topic Classification found in record: {0}", recordId);
+            return Result.FAIL;
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking Topic Classification", e);
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Check for DDI Analysis Unit in the DDI document.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return true if approved Analysis Unit found, false otherwise
+     */
+    private boolean checkAnalysisUnit(Document ddiDoc, String recordId) {
+        try {
+            NodeList nodes = (NodeList) analysisUnitXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            if (nodes == null || nodes.getLength() == 0) {
+                logger.info("No Analysis Unit terms found");
+                return false;
+            }
+
+            Set<String> approvedTerms = getApprovedAnalysisUnitTerms();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                String text = nodes.item(i).getTextContent().trim();
+                if (!text.isEmpty() && approvedTerms.contains(text)) {
+                    logger.log(Level.INFO, "Found DDI Analysis Unit: {0}", text);
+                    return true;
+                }
+            }
+            logger.log(Level.INFO, "No approved Analysis Unit term found in record: {0}", recordId);
+            return false;
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking Analysis Unit", e);
+            return false;
+        }
+    }
+
+    /**
+     * Check for DDI Time Method in the DDI document.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return true if approved Time Method found, false otherwise
+     */
+    private boolean checkTimeMethod(Document ddiDoc, String recordId) {
+        try {
+            NodeList nodes = (NodeList) timeMethodXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            if (nodes == null || nodes.getLength() == 0) {
+                logger.info("No Time Method elements found");
+                return false;
+            }
+
+            Set<String> approvedTerms = getApprovedTimeMethodTerms();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                String text = nodes.item(i).getTextContent().trim();
+                if (!text.isEmpty() && approvedTerms.contains(text)) {
+                    logger.log(Level.INFO, "Found DDI Time Method: {0}", text);
+                    return true;
+                }
+            }
+            logger.log(Level.INFO, "No approved Time Method found in record: {0}", recordId);
+            return false;
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking Time Method in record: {0}: {1}", new Object[]{recordId, e.getMessage()});
+            return false;
+        }
+    }
+
+
+    /**
+     * Check for DDI Sampling Procedure in the DDI document.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return "pass", "fail", or "indeterminate"
+     */
+    private Result checkDdiSamplingProcedure(Document ddiDoc, String recordId) {
+        try {
+            NodeList nodes = (NodeList) samplingProcXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            if (nodes == null || nodes.getLength() == 0) {
+                logger.info("No Sampling Procedure terms found");
+                return Result.FAIL;
+            }
+
+            Set<String> approvedTerms = getApprovedSamplingProcTerms();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                String text = nodes.item(i).getTextContent().trim();
+                if (!text.isEmpty() && approvedTerms.contains(text)) {
+                    logger.log(Level.INFO, "Found DDI Sampling Procedure term: {0}", text);
+                    return Result.PASS;
+                }
+            }
+            logger.log(Level.INFO, "No Sampling Procedure terms found in record: {0}", recordId);
+            return Result.FAIL;
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms", e);
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Check for DDI Mode of Collection in the DDI document.
+     *
+     * @param ddiDoc   The DDI document
+     * @param recordId The record identifier (for logging)
+     * @return true if approved Mode of Collection found, false otherwise
+     */
+    private boolean checkCollectionMode(Document ddiDoc, String recordId) {
+        try {
+            NodeList nodes = (NodeList) collectionModeXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            if (nodes == null || nodes.getLength() == 0) {
+                logger.info("No Mode of Collection elements found");
+                return false;
+            }
+
+            Set<String> approvedTerms = getApprovedCollectionModeTerms();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                String text = nodes.item(i).getTextContent().trim();
+                if (!text.isEmpty() && approvedTerms.contains(text)) {
+                    logger.log(Level.INFO, "Found DDI Mode of Collection: {0}", text);
+                    return true;
+                }
+            }
+            logger.log(Level.INFO, "No approved Mode of Collection found in record: {0}", recordId);
+            return false;
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking Mode of Collection", e);
+            return false;
+        }
+    }
+
+
+    /**
+     * Fetch and cache approved Topic Classification terms from CESSDA vocabulary.
+     *
+     * @return Set of approved Topic Classification terms
+     */
+    private Set<String> getApprovedTopicClassTerms() {
+        if (!cachedTopicClassTerms.isEmpty()) {
+            return cachedTopicClassTerms;
+        }
+
+        logger.info("Fetching approved Topic Classification terms from CESSDA vocabulary...");
+        try {
+            Set<String> terms = fetchVocabularyTerms(TOPIC_CLASS_VOCAB_URL, "TopicClassification");
+            if (terms.isEmpty()) {
+                logger.info("Using default Topic Classification terms");
+                return Collections.emptySet();
+            }
+            cachedTopicClassTerms.addAll(terms);
+            logger.log(Level.INFO, FETCHED + "{0} approved Topic Classification terms", terms.size());
+            return cachedTopicClassTerms;
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to fetch Topic Classification vocabulary", e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Fetch and cache approved Analysis Unit terms from CESSDA vocabulary.
+     *
+     * @return Set of approved Analysis Unit terms
+     */
+    private Set<String> getApprovedAnalysisUnitTerms() {
+        if (!cachedAnalysisUnitTerms.isEmpty()) {
+            return cachedAnalysisUnitTerms;
+        }
+
+        logger.info("Fetching approved Analysis Unit terms from CESSDA vocabulary...");
+        try {
+            Set<String> terms = fetchVocabularyTerms(ANALYSIS_UNIT_VOCAB_URL, "AnalysisUnit");
+            if (terms.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            cachedAnalysisUnitTerms.addAll(terms);
+            logger.log(Level.INFO, FETCHED + "{0} approved Analysis Unit terms", terms.size());
+            return cachedAnalysisUnitTerms;
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to fetch Analysis Unit vocabulary", e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Fetch and cache approved Time Method terms from CESSDA vocabulary.
+     *
+     * @return Set of approved Time Method terms
+     */
+    private Set<String> getApprovedTimeMethodTerms() {
+        if (!cachedTimeMethodTerms.isEmpty()) {
+            return cachedTimeMethodTerms;
+        }
+
+        logger.info("Fetching approved Time Method terms from CESSDA vocabulary...");
+        try {
+            Set<String> terms = fetchVocabularyTerms(TIME_METHOD_VOCAB_URL, "TimeMethod");
+            if (terms.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            cachedTimeMethodTerms.addAll(terms);
+            logger.log(Level.INFO, FETCHED + "{0} approved Time Method terms", terms.size());
+            return cachedTimeMethodTerms;
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to fetch Time Method vocabulary", e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Fetch and cache approved Sampling Procedure terms from DDI vocabulary.
+     *
+     * @return Set of approved Sampling Procedure terms
+     */
+    private Set<String> getApprovedSamplingProcTerms() {
+        if (!cachedSamplingProcTerms.isEmpty()) {
+            return cachedSamplingProcTerms;
+        }
+
+        logger.info("Fetching Sampling Procedure terms from CESSDA vocabulary...");
+        try {
+            Set<String> terms = fetchVocabularyTerms(SAMPLING_PROC_VOCAB_URL, "SamplingProcedure");
+            if (terms.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            cachedSamplingProcTerms.addAll(terms);
+            logger.log(Level.INFO, FETCHED + "{0} approved Sampling Procedure terms", terms.size());
+            return cachedSamplingProcTerms;
+        } catch (IOException e) {
+            Thread.currentThread().interrupt(); // Restore interrupt status
+            logger.log(Level.SEVERE, "Failed to fetch Sampling Procedure vocabulary", e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Fetch and cache approved Mode of Collection terms from CESSDA vocabulary.
+     *
+     * @return Set of approved Mode of Collection terms
+     */
+    private Set<String> getApprovedCollectionModeTerms() {
+        if (!cachedCollectionModeTerms.isEmpty()) {
+            return cachedCollectionModeTerms;
+        }
+
+        logger.info("Fetching approved Mode of Collection terms from CESSDA vocabulary...");
+        try {
+            Set<String> terms = fetchVocabularyTerms(COLLECTION_MODE_VOCAB_URL, "ModeOfCollection");
+            if (terms.isEmpty()) {
+                return Collections.emptySet();
+            }
+
+            cachedCollectionModeTerms.addAll(terms);
+            logger.log(Level.INFO, FETCHED + "{0} approved Mode of Collection terms", terms.size());
+            return cachedCollectionModeTerms;
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to fetch Mode of Collection vocabulary", e);
+            return Collections.emptySet();
+        }
+    }
+
+    // ============================================================================
+    // SHARED VOCABULARY FETCHING
+    // ============================================================================
+
+
     // Enums
     private enum TestTypes {
         ACCESS_RIGHTS("access-rights"),
         PID("pid"),
-        ELSST_KEYWORDS("elsst-keywords");
+        ELSST_KEYWORDS("elsst-keywords"),
+        DDI_VOCABS("ddi-vocabs"),
+        DDI_SAMPLEPROC("ddi-sampleproc"),
+        TOPIC_CLASS("topic-class");
 
         private final String name;
 

@@ -17,28 +17,13 @@
 
 package cessda.fairtests;
 
-import java.lang.reflect.Field;
-import java.util.Set;
+import java.lang.reflect.InvocationTargetException;
 
 class TestsHelper {
 
-    static String invokeExtractRecordIdentifier(FairTests tests, String url) {
-        try {
-            var m = FairTests.class.getDeclaredMethod("extractRecordIdentifier", String.class);
-            m.setAccessible(true);
-            return (String) m.invoke(tests, url);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static void setStaticSet(Class<?> clazz, String fieldName, Set<String> value) {
-        try {
-            Field f = clazz.getDeclaredField(fieldName);
-            f.setAccessible(true);
-            f.set(null, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    static String invokeExtractRecordIdentifier(FairTests tests, String url) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        var m = FairTests.class.getDeclaredMethod("extractRecordIdentifier", String.class);
+        m.setAccessible(true);
+        return (String) m.invoke(tests, url);
     }
 }
