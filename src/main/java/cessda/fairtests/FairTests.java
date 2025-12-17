@@ -45,9 +45,38 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * <H2>FairTests</H2>
@@ -57,6 +86,7 @@ import java.util.stream.Collectors;
  * - Access Rights compliance
  * - Persistent Identifier (PID) schema validation
  * - ELSST controlled vocabulary keyword validation
+ * - Use of CESSDA controlled vocabularies
  * <P>
  * All tests fetch DDI 2.5 metadata via the CESSDA OAI-PMH endpoint and validate
  * against approved vocabularies from the CESSDA vocabulary service.
@@ -73,20 +103,84 @@ public class FairTests {
     // Logger
     private static final Logger logger = Logger.getLogger(FairTests.class.getName());
 
-    // Common constants
+    // Namespace and URL constants
     private static final String DDI_NAMESPACE = "ddi:codebook:2_5";
+    // OAI-PMH endpoint base URL
     private static final String OAI_PMH_BASE = "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=";
+    // Detail URL segment
     private static final String DETAIL_SEGMENT = "/detail/";
+    // Result constants
+    private static final String RESULT_PASS = "pass";
+    // Result constants
+    private static final String RESULT_FAIL = "fail";
+    // Result constants
+    private static final String RESULT_INDETERMINATE = "indeterminate";
+    // Logging messages
+    private static final String DOC_PROC_ERROR = "Error processing document: ";
+    // Logging messages
+    private static final String ERROR = "Error: ";
+    // HTTP header constants
+    private static final String HEAD_ACCEPT = "Accept";
+    // Logging messages
+    private static final String FETCHED = "Fetched ";
 
-    // Vocabulary URLs
-    private static final String ACCESS_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
-    private static final String PID_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
-    private static final String ELSST_API_BASE = "https://skg-if-openapi.cessda.eu/api/topics";
+    // XPath expressions
+    private static final String ACCESS_RIGHTS_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess";
+    // PID XPath expression
+    private static final String PID_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo";
+    // Keyword XPath expression
+    private static final String KEYWORD_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword";
+    // Topic Classification XPath expression
+    private static final String TOPIC_CLASS_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas";
+    // Recommended DDI vocabularies XPath expressions
+    private static final String ANALYSIS_UNIT_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit";
+    // Time Method XPath expression
+    private static final String TIME_METHOD_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth";
+    // Sampling Procedure XPath expression
+    private static final String SAMPLING_PROC_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc";
+    // Mode of Collection XPath expression
+    private static final String COLLECTION_MODE_PATH =
+        "//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode";
+
+    // Access Rights vocabulary URL
+    private static final String ACCESS_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
+    // PID vocabulary URL
+    private static final String PID_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
+    // ELSST API and vocabulary URLs
+    private static final String ELSST_API_BASE =
+        "https://skg-if-openapi.cessda.eu/api/topics";
+    // Topic Classification vocabulary URL
+    private static final String TOPIC_CLASS_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.0.0?languageVersion=en-4.0.0&format=json";
+    // Recommended DDI vocabularies URLs
+    private static final String ANALYSIS_UNIT_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/1.2.0?languageVersion=en-1.2.0&format=json";
+    // Time Method vocabulary URL
+    private static final String TIME_METHOD_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.1?languageVersion=en-1.2.1&format=json";
+    // Sampling Procedure vocabulary URL
+    private static final String SAMPLING_PROC_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.0?languageVersion=en-2.0.0&format=json";
+    // Mode of Collection vocabulary URL
+    private static final String COLLECTION_MODE_VOCAB_URL =
+        "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/4.0.0?languageVersion=en-4.0.0&format=json";
 
     // ELSST constants
     private static final String ELSST_VOCAB_NAME = "ELSST";
     private static final String ELSST_URI_SUBSTRING = "elsst.cessda.eu";
     private static final String HTTP_HEADER_ACCEPT = "Accept";
+
+    // Topic Classification constant
+    private static final String TOPIC_CLASS_VOCAB_NAME = "CESSDA Topic Classification";
 
     // Shared components
     private final DocumentBuilder documentBuilder;
@@ -253,7 +347,82 @@ public class FairTests {
     }
 
     /**
+     * Checks whether a CESSDA record uses recommended DDI controlled
+     * vocabularies.
+     * Tests for presence of:
+     * - DDI Analysis Unit
+     * - DDI Time Method
+     * - DDI Mode of Collection
+     *
+     * @param url The CESSDA detail URL
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public String containsRecommendedDdiVocabularies(String url) {
+        try {
+            String recordId = extractRecordIdentifier(url);
+            logInfo("Checking CESSDA vocabularies for record: " + recordId);
+
+            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
+            return checkRecommendedDdiVocabularies(doc, recordId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logSevere(DOC_PROC_ERROR + e.getMessage());
+        } catch (Exception e) {
+            logSevere(ERROR + e.getMessage());
+        }
+        return RESULT_INDETERMINATE;
+    }
+
+    /**
+     * Checks whether a CESSDA record uses Topic Classification vocabulary
+     * terms.
+     *
+     * @param url The CESSDA detail URL
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public String containsCessdaTopicClassificationTerms(String url) {
+        try {
+            String recordId = extractRecordIdentifier(url);
+            XPath xpath = createXPath();
+            logInfo("Checking Topic Classification for record: " + recordId);
+
+            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
+            return checkCessdaTopicClassification(xpath, doc, recordId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logSevere(DOC_PROC_ERROR + e.getMessage());
+        } catch (Exception e) {
+            logSevere(ERROR + e.getMessage());
+        }
+        return RESULT_INDETERMINATE;
+    }
+
+     /**
+     * Checks whether a CESSDA record uses DDI Sampling Procedure vocabulary terms.
+     *
+     * @param url The CESSDA detail URL
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public String containsDdiSamplingProcedureTerms(String url) {
+        try {
+            String recordId = extractRecordIdentifier(url);
+            logInfo("Checking Sampling Procedure for record: " + recordId);
+
+            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
+            return checkDdiSamplingProcedure(doc, recordId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logSevere(DOC_PROC_ERROR + e.getMessage());
+        } catch (Exception e) {
+            logSevere(ERROR + e.getMessage());
+        }
+    }
+
+    /**
      * Extract the record identifier from the CESSDA detail URL.
+     *
+     * @param url The CESSDA detail URL
+     * @return The record identifier
      */
     private String extractRecordIdentifier(String url) {
         if (!url.contains(DETAIL_SEGMENT)) {
@@ -265,6 +434,29 @@ public class FairTests {
             throw new IllegalArgumentException("No record identifier in URL: " + url);
         }
         return id;
+    }
+
+    /**
+     * Extract the language code from the URL query parameter.
+     *
+     * @param url The CESSDA detail URL
+     */
+    private void extractLanguageCodeFromUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            String query = uri.getQuery();
+            if (query == null)
+                return;
+            for (String param : query.split("&")) {
+                String[] kv = param.split("=", 2);
+                if (kv.length == 2 && kv[0].equalsIgnoreCase("lang") && kv[1].matches("^[a-zA-Z]{2}$")) {
+                    languageCode = kv[1].toLowerCase();
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            logSevere("URL Exception: " + e.getMessage());
+        }
     }
 
     /**
@@ -389,6 +581,11 @@ public class FairTests {
         }
     }
 
+    /**
+     * Fetch the approved PID schemas from the CESSDA vocabulary service.
+     *
+     * @return Set of approved PID schema names
+     */
     private Set<String> getApprovedAccessRights() {
         if (!cachedAccessRightsTerms.isEmpty()) {
             return cachedAccessRightsTerms;
@@ -469,6 +666,40 @@ public class FairTests {
     // ============================================================================
     // ELSST KEYWORD VALIDATION
     // ============================================================================
+    /**
+     * Extract candidate keywords from the NodeList.
+     *
+     * @param nodes The NodeList of keyword elements
+     * @return List of KeywordCandidate objects
+     */
+    private List<KeywordCandidate> extractKeywordCandidates(NodeList nodes) {
+        List<KeywordCandidate> candidates = new ArrayList<>();
+
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element keywordElement = (Element) nodes.item(i);
+            String text = keywordElement.getTextContent().trim();
+            String vocab = keywordElement.getAttribute("vocab");
+            String vocabURI = keywordElement.getAttribute("vocabURI");
+
+            boolean hasVocab = ELSST_VOCAB_NAME.equalsIgnoreCase(vocab);
+            boolean hasVocabURI = vocabURI != null && vocabURI.toLowerCase().contains(ELSST_URI_SUBSTRING);
+
+            if (hasVocab && hasVocabURI && !text.isEmpty()) {
+                candidates.add(new KeywordCandidate(text, hasVocab, hasVocabURI));
+                logInfo("Candidate keyword found: " + text);
+            }
+        }
+
+        return candidates;
+    }
+
+    /**
+     * Keyword candidate data class.
+     */
+    private static class KeywordCandidate {
+        final String text;
+        final boolean hasVocab;
+        final boolean hasVocabURI;
 
     private Set<String> getApprovedPidSchemas() {
         if (!cachedPidSchemas.isEmpty()) {
