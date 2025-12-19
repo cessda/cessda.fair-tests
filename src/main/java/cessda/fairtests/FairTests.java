@@ -122,7 +122,6 @@ public class FairTests {
     private final DocumentBuilder documentBuilder;
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
-    private final XPath xPath = XPathFactory.newInstance().newXPath();
 
     // Cached vocabularies
     final ConcurrentSkipListSet<String> cachedAccessRightsTerms = new ConcurrentSkipListSet<>();
@@ -155,6 +154,7 @@ public class FairTests {
         this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
 
         // Set XPath namespace context
+        XPath xPath = XPathFactory.newInstance().newXPath();
         xPath.setNamespaceContext(new NamespaceContext() {
             public String getNamespaceURI(String prefix) {
                 return "ddi".equals(prefix) ? DDI_NAMESPACE : null;
@@ -169,7 +169,7 @@ public class FairTests {
             }
         });
 
-        // Compile XPaths - this happens after the namespace context is set up
+        // Compile XPaths
         ddiCodebookXPath = xPath.compile("//ddi:codeBook");
         accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess");
         analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");

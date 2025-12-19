@@ -15,6 +15,10 @@
  */
 pipeline {
 
+    agent {
+        label 'jnlp-himem'
+    }
+
     environment {
         PRODUCT_NAME = 'fair-tests'
         IMAGE_NAME = "${DOCKER_ARTIFACT_REGISTRY}/${PRODUCT_NAME}"
@@ -22,6 +26,18 @@ pipeline {
     }
 
     stages {
+        stage('Run Tests') {
+            agent {
+                dockerfile {
+                    additionalBuildArgs '--target=builder'
+                    customWorkspace '/opt/cessda/fair-tests'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh './mvnw verify'
+            }
+        }
         stage('Build Docker Image') {
             steps {
                 docker.build(DOCKER_IMAGE)

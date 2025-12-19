@@ -29,13 +29,16 @@ COPY pom.xml .
 # Pre-fetch dependencies for faster incremental builds
 RUN ./mvnw dependency:go-offline -B
 
+# ===== Stage 2: Compile =====
+FROM builder AS compile
+
 # Copy the application source code
 COPY . .
 
 # Build the JAR
-RUN ./mvnw clean verify -DskipTests
+RUN ./mvnw clean package -DskipTests
 
-# ===== Stage 2: Runtime =====
+# ===== Stage 3: Runtime =====
 FROM eclipse-temurin:21-jre AS runtime
 
 WORKDIR /opt/cessda/fair-tests
