@@ -35,7 +35,9 @@ pipeline {
                 }
             }
             steps {
-                sh './mvnw verify'
+                withMaven {
+                    sh './mvnw verify'
+                }
             }
         }
         stage('Build Docker Image') {
