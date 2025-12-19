@@ -44,7 +44,7 @@ FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /opt/cessda/fair-tests
 
 # Copy the built JAR from the build stage
-COPY --from=builder /opt/cessda/fair-tests/target/*-with-dependencies.jar fair-tests.jar
+COPY --from=compile /opt/cessda/fair-tests/target/*-with-dependencies.jar fair-tests.jar
 
 # Entrypoint — run the Java class with the CDC URL passed as an argument
 ENTRYPOINT ["java", "-jar", "/opt/cessda/fair-tests/fair-tests.jar"]
