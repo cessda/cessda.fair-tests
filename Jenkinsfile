@@ -47,6 +47,7 @@ pipeline {
         }
         stage('Push Docker Image') {
             steps {
+                sh "gcloud auth configure-docker ${ARTIFACT_REGISTRY_HOST}"
                 sh "docker push ${DOCKER_IMAGE}"
             }
             when { branch 'main' }
