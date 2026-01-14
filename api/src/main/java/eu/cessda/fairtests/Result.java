@@ -1,4 +1,4 @@
-package cessda.fairtests;
+package eu.cessda.fairtests;
 
 /**
  * Result of the FAIR test
