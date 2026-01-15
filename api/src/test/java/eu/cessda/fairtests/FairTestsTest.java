@@ -1,8 +1,8 @@
 /*
  * SPDX-FileCopyrightText: 2025 CESSDA ERIC (support@cessda.eu)
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,10 +12,10 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  */
 
-package cessda.fairtests;
+package eu.cessda.fairtests;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,16 +125,16 @@ class FairTestsTest {
             tests.cachedAccessRightsTerms.add("Open");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:dataAccs>
-                        <ddi:typeOfAccess>Open</ddi:typeOfAccess>
-                      </ddi:dataAccs>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:dataAccs>
+                                <ddi:typeOfAccess>Open</ddi:typeOfAccess>
+                              </ddi:dataAccs>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             Result result = tests.containsApprovedAccessRights("http://x/detail/ID123");
             assertEquals(Result.PASS, result);
@@ -143,16 +143,16 @@ class FairTestsTest {
         @Test
         void failsWhenTermNotFound() throws Exception {
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:dataAccs>
-                        <ddi:typeOfAccess>Unknown</ddi:typeOfAccess>
-                      </ddi:dataAccs>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:dataAccs>
+                                <ddi:typeOfAccess>Unknown</ddi:typeOfAccess>
+                              </ddi:dataAccs>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             Result result = tests.containsApprovedAccessRights("http://x/detail/ID999");
             assertEquals(Result.FAIL, result);
@@ -172,18 +172,18 @@ class FairTestsTest {
             tests.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:citation>
-                        <ddi:titlStmt>
-                          <ddi:IDNo agency="DOI">10.123/abc</ddi:IDNo>
-                        </ddi:titlStmt>
-                      </ddi:citation>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:citation>
+                                <ddi:titlStmt>
+                                  <ddi:IDNo agency="DOI">10.123/abc</ddi:IDNo>
+                                </ddi:titlStmt>
+                              </ddi:citation>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             Result r = tests.containsApprovedPid("http://x/detail/P1");
             assertEquals(Result.PASS, r);
@@ -195,18 +195,18 @@ class FairTestsTest {
             tests.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:citation>
-                        <ddi:titlStmt>
-                          <ddi:IDNo agency="NA">123</ddi:IDNo>
-                        </ddi:titlStmt>
-                      </ddi:citation>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:citation>
+                                <ddi:titlStmt>
+                                  <ddi:IDNo agency="NA">123</ddi:IDNo>
+                                </ddi:titlStmt>
+                              </ddi:citation>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             assertEquals(Result.FAIL, tests.containsApprovedPid("http://x/detail/P2"));
         }
@@ -223,18 +223,18 @@ class FairTestsTest {
             tests.cachedTopicClassTerms.add("Socioeconomics");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:stdyInfo>
-                        <ddi:subject>
-                          <ddi:topcClas vocab="CESSDA Topic Classification">Socioeconomics</ddi:topcClas>
-                        </ddi:subject>
-                      </ddi:stdyInfo>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:stdyInfo>
+                                <ddi:subject>
+                                  <ddi:topcClas vocab="CESSDA Topic Classification">Socioeconomics</ddi:topcClas>
+                                </ddi:subject>
+                              </ddi:stdyInfo>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             Result result = tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1");
             assertEquals(Result.PASS, result);
@@ -245,18 +245,18 @@ class FairTestsTest {
             tests.cachedTopicClassTerms.add("Approved");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:stdyInfo>
-                        <ddi:subject>
-                          <ddi:topcClas vocab="CESSDA Topic Classification">Nope</ddi:topcClas>
-                        </ddi:subject>
-                      </ddi:stdyInfo>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:stdyInfo>
+                                <ddi:subject>
+                                  <ddi:topcClas vocab="CESSDA Topic Classification">Nope</ddi:topcClas>
+                                </ddi:subject>
+                              </ddi:stdyInfo>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
         }
@@ -273,18 +273,18 @@ class FairTestsTest {
             tests.cachedAnalysisUnitTerms.add("Individual");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook>
-                    <ddi:stdyDscr>
-                      <ddi:stdyInfo>
-                        <ddi:sumDscr>
-                          <ddi:anlyUnit>Individual</ddi:anlyUnit>
-                        </ddi:sumDscr>
-                      </ddi:stdyInfo>
-                    </ddi:stdyDscr>
-                  </ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook>
+                            <ddi:stdyDscr>
+                              <ddi:stdyInfo>
+                                <ddi:sumDscr>
+                                  <ddi:anlyUnit>Individual</ddi:anlyUnit>
+                                </ddi:sumDscr>
+                              </ddi:stdyInfo>
+                            </ddi:stdyDscr>
+                          </ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             assertEquals(Result.PASS, tests.containsRecommendedDdiVocabularies("http://x/detail/DDI1"));
         }
@@ -294,12 +294,12 @@ class FairTestsTest {
             tests.cachedAnalysisUnitTerms.add("X");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook><ddi:stdyDscr><ddi:stdyInfo>
-                    <ddi:sumDscr><ddi:anlyUnit>Y</ddi:anlyUnit></ddi:sumDscr>
-                  </ddi:stdyInfo></ddi:stdyDscr></ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook><ddi:stdyDscr><ddi:stdyInfo>
+                            <ddi:sumDscr><ddi:anlyUnit>Y</ddi:anlyUnit></ddi:sumDscr>
+                          </ddi:stdyInfo></ddi:stdyDscr></ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             assertEquals(Result.FAIL, tests.containsRecommendedDdiVocabularies("http://x/detail/DDI2"));
         }
@@ -317,12 +317,12 @@ class FairTestsTest {
             tests.cachedSamplingProcTerms.add("Quota Sampling");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
-                    <ddi:sampProc>Quota Sampling</ddi:sampProc>
-                  </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
+                            <ddi:sampProc>Quota Sampling</ddi:sampProc>
+                          </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             Result result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
             assertEquals(Result.PASS, result);
@@ -333,12 +333,12 @@ class FairTestsTest {
             tests.cachedSamplingProcTerms.add("A");
 
             mockXmlResponse("""
-                <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                  <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
-                    <ddi:sampProc>B</ddi:sampProc>
-                  </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
-                </OAI-PMH>
-            """);
+                        <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
+                          <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
+                            <ddi:sampProc>B</ddi:sampProc>
+                          </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
+                        </OAI-PMH>
+                    """);
 
             assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
         }

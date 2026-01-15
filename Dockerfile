@@ -13,39 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# ===== Stage 1: Build =====
-FROM eclipse-temurin:21-jdk AS builder
+FROM eclipse-temurin:17
 
-# Define environment variables
-WORKDIR /opt/cessda/fair-tests
-
-# Copy Maven Wrapper
-COPY mvnw .
-COPY .mvn/wrapper/maven-wrapper.properties .mvn/wrapper/maven-wrapper.properties
-
-# Copy Maven project files
-COPY pom.xml .
-
-# Pre-fetch dependencies for faster incremental builds
-RUN ./mvnw dependency:go-offline -B
-
-# ===== Stage 2: Compile =====
-FROM builder AS compile
-
-# Copy the application source code
-COPY . .
-
-# Build the JAR
-RUN ./mvnw clean package -DskipTests
-
-# ===== Stage 3: Runtime =====
-FROM eclipse-temurin:21-jre AS runtime
+# Container Information
+LABEL maintainer='CESSDA-ERIC "support@cessda.eu"'
 
 WORKDIR /opt/cessda/fair-tests
 
-# Copy the built JAR from the build stage
-COPY --from=compile /opt/cessda/fair-tests/target/*-with-dependencies.jar fair-tests.jar
+# Copy JAR
+COPY server/target/server*.jar fair-tests.jar
 
-# Entrypoint — run the Java class with the CDC URL passed as an argument
+# Entrypoint - Start CVS
+USER 1000
 ENTRYPOINT ["java", "-jar", "/opt/cessda/fair-tests/fair-tests.jar"]
+
 

@@ -26,17 +26,16 @@ pipeline {
     }
 
     stages {
-        stage('Run Tests') {
+        stage('Compile Java') {
             agent {
-                dockerfile {
-                    additionalBuildArgs '--target=builder'
-                    customWorkspace '/opt/cessda/fair-tests'
+                docker {
+                    image 'eclipse-temurin:17'
                     reuseNode true
                 }
             }
             steps {
                 withMaven {
-                    sh './mvnw verify'
+                    sh "./mvnw verify -Pci"
                 }
             }
         }

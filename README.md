@@ -76,7 +76,7 @@ Java 21 or greater is required to build and run this application.
 ### Using Maven Exec Plugin
 
 ```bash
-mvn -Dexec.mainClass=cessda.fairtests.FairTests \
+mvn -Dexec.mainClass=eu.cessda.fairtests.FairTests \
     -Dexec.args="<test-type> <CDC URL>" \
     org.codehaus.mojo:exec-maven-plugin:3.1.0:java
 ```
