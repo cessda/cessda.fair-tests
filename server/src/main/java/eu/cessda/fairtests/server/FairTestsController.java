@@ -18,7 +18,7 @@ public class FairTestsController {
     }
 
     @GetMapping(path = "{test}")
-    public Result accessRights(@PathVariable TestType test, String url) {
+    public Result accessRights(@PathVariable(name = "test") TestType test, String url) {
         return fairTests.runTest(test, url);
     }
 }
