@@ -3,10 +3,7 @@ package eu.cessda.fairtests.server;
 import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("api")
@@ -18,7 +15,7 @@ public class FairTestsController {
     }
 
     @GetMapping(path = "{test}")
-    public Result accessRights(@PathVariable(name = "test") TestType test, String url) {
+    public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") String url) {
         return fairTests.runTest(test, url);
     }
 }
