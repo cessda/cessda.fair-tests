@@ -51,5 +51,11 @@ pipeline {
             }
             when { branch 'main' }
         }
+        stage('Deploy Fair Tests') {
+            steps {
+                build job: 'cessda.fair-tests.deploy/main', parameters: [string(name: 'SERVER_IMAGE_TAG', value: GIT_COMMIT)], wait: false
+            }
+            when { branch 'main' }
+        }
     }
 }
