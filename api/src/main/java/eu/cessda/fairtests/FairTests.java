@@ -203,12 +203,12 @@ public class FairTests {
             testMap.put(testType.testName(), testType);
         }
 
-        if (commandLine.getArgList().size() < 2 || testMap.containsKey(commandLine.getArgList().get(0))) {
+        if (commandLine.getArgList().size() < 2 || testMap.containsKey(commandLine.getArgList().getFirst())) {
             new HelpFormatter().printHelp("FairTests <test-type> <url>\ntest types: access-rights, pid, elsst-keywords", options);
             System.exit(1);
         }
 
-        TestType test = testMap.get(commandLine.getArgList().get(0));
+        TestType test = testMap.get(commandLine.getArgList().getFirst());
         String url = commandLine.getArgList().get(1);
 
         // Instance tests

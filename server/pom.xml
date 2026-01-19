@@ -12,7 +12,7 @@
     <name>CESSDA FAIR Tests - Server</name>
     <properties>
         <main.basedir>${basedir}/../..</main.basedir>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <spring-boot.version>4.0.1</spring-boot.version>
     </properties>
     <dependencies>
