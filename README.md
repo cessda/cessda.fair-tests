@@ -5,12 +5,17 @@
     (https://api.eu.badgr.io/public/assertions/SGiodTQYQPGTwKuZbpUiXA "SQAaaS silver badge achieved")
 
 This repository contains the source code for CESSDA community-specific FAIR
-tests that validate data catalogue records against FAIR data principles.
+tests that validate DDI2.5 XML records against FAIR data principles.
 
 ## Overview
 
-The FairTests utility provides four validation tests for CESSDA data catalogue
-records:
+- The FairTests utility provides validation tests for DDI2.5 records
+- Controlled vocabulary terms are fetched from the CESSDA vocabulary service
+- Terms are cached in memory to improve performance and reduce API calls
+- If a vocabulary service is unavailable, some tests fall back to default values
+- Empty or whitespace-only values are treated as absent
+- All text content is trimmed of leading and trailing whitespace before
+    comparison
 
 ### 1. Access Rights Validation
 
@@ -24,43 +29,37 @@ CESSDA vocabulary (e.g., DOI, Handle, URN, ARK).
 
 ### 3. ELSST Keyword Validation
 
-Verifies that records contain keywords from the ELSST (European Language Social
-Science Thesaurus) controlled vocabulary.
+Verifies that records contain keywords from the ELSST
+(European Language Social Science Thesaurus) controlled vocabulary.
 
-The ELSST test implements strict validation requiring keywords to meet
-**ALL three conditions** simultaneously:
-
-1. The DDI keyword element has `vocab="ELSST"`
-1. The DDI keyword element has a `vocabURI` attribute containing
-    `"elsst.cessda.eu"`
-1. The keyword text matches a label from the ELSST Topics API
-
-A record passes if at least one keyword meets all the specified validation
-criteria.
-
-### 4. DDI Recommended Vocabularies
-
-Verifies that the record uses the following recommended DDI vocabularies in the
-appropriate attributes:
-
-1. DDI Analysis Unit
-1. DDI Time Method
-1. DDI Mode of Collection
-
-A record passes if it contains at least one recommended DDI controlled
-vocabulary.
-
-### 5. DDI Optional Vocabulary (Sampling Procedure)
-
-Verifies that the record uses the DDI Sampling Procedure vocabulary in the
-appropriate attribute.
-A record passes if it contains at least one term from the vocabulary.
-
-### 6. CESSDA Topic Classification Vocabulary
+### 4. CESSDA Topic Classification Vocabulary
 
 Verifies that the record uses the Topic Classification vocabulary in the
 appropriate attribute.
-A record passes if it contains at least one term from the vocabulary.
+
+### 5. DDI Analysis Unit
+
+Verifies that the record uses DDI Analysis Unit vocabulary in the
+appropriate attributes.
+
+### 6. DDI Collection Mode
+
+Verifies that the record uses the DDI Collection Mode vocabulary in the
+appropriate attribute.
+
+### 7. DDI Time Method
+
+Verifies that the record uses the DDI Time Method vocabulary in the
+appropriate attribute.
+
+### 8. DDI Sampling Procedure
+
+Verifies that the record uses the DDI Sampling Procedure vocabulary in the
+appropriate attribute.
+
+### 9. Provenance Information
+
+Verifies that the record contains provenance metadata elements.
 
 ## Prerequisites
 
@@ -85,7 +84,8 @@ mvn -Dexec.mainClass=eu.cessda.fairtests.FairTests \
 
 ```bash
 mvn clean package
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar <test-type> \
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+<test-type> \
     <CDC URL>
 ```
 
@@ -94,61 +94,81 @@ java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar <test-type> \
 ### Test Access Rights
 
 ```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar access-rights \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+access-rights "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
 ```
 
 ### Test PID Schema
 
 ```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar pid \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+pid "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
 ```
 
 ### Test ELSST Keywords
 
 ```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar elsst-keywords \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
-```
-
-### Test recommended DDI vocabularies
-
-```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar ddi-vocabs \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
-```
-
-### Test optional DDI Sampling Procedure vocabulary
-
-```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar ddi-sampleproc \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+elsst-keywords "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
 ```
 
 ### Test CESSDA Topic Classification vocabulary
 
 ```bash
-java -jar target/fair-tests-1.0.0-jar-with-dependencies.jar topic-class \
-    "https://datacatalogue.cessda.eu/detail/abc123?lang=en"
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+topic-class "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+```
+
+### Test DDI Analysis Unit vocabulary
+
+```bash
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+ddi-analysis-unit "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+```
+
+### Test DDI Collection Mode vocabulary
+
+```bash
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+ddi-collection-mode "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+```
+
+### Test DDI Time Method vocabulary
+
+```bash
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+ddi-time-method "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+```
+
+### Test DDI Sampling Procedure vocabulary
+
+```bash
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+ddi-sampleproc "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+```
+
+### Test Provenance information
+
+```bash
+java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
+provenance "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
 ```
 
 ### Test Type Options
 
 - `access-rights` - Validate Access Rights terms
 - `pid` - Validate Persistent Identifier schemas
-- `elsst-keywords` - Validate ELSST controlled vocabulary keywords
-- `ddi-vocabs` - Validate recommended DDI vocabularies
-- `ddi-sampleproc` - Validate optional DDI Sampling Procedure vocabulary
-- `topic-class` - Validate CESSDA Topic Classification vocabulary
+- `elsst-keywords` - Validate ELSST use of controlled vocabulary keywords
+- `topic-class` - Validate use of CESSDA Topic Classification vocabulary terms
+- `ddi-analysis-unit` - Validate use of DDI Analysis Unit vocabulary terms
+- `ddi-collection-mode` - Validate use of DDI Collection Mode vocabulary terms
+- `ddi-time-method` - Validate use of DDI Time Method vocabulary terms
+- `ddi-sampleproc` - Validate use of DDI Sampling Procedure vocabulary terms
+- `provenance` - Validate Provenance
 
 ### URL Requirements
 
-The CDC URL must:
-
-- Include the `/detail/{identifier}` path segment
-- Optionally include a `lang` query parameter (e.g., `?lang=en`) for ELSST API
-    validation
+The URL must return DDI2.5 XML
 
 ### Return Values
 
@@ -178,90 +198,54 @@ This project uses the standard Maven project structure.
 
 ## How It Works
 
-### Access Rights Validation
-
-The test:
-
-1. Fetches DDI metadata via OAI-PMH endpoint
-1. Extracts values from `typeOfAccess` elements using XPath
-1. Retrieves list of terms from CESSDA vocabulary API
-1. Compares each attribute value against list of terms
-1. Returns "pass" if any approved term is found
-
-### PID Schema Validation
-
-The test:
-
-1. Fetches DDI metadata via OAI-PMH endpoint
-1. Extracts `IDNo` elements with `agency` attributes using XPath
-1. Retrieves list of PID terms from CESSDA vocabulary API
-1. Compares each attribute value against list of terms
-1. Returns "pass" if any term matches any value
-
-### ELSST Keyword Validation
-
-The test uses a two-phase validation approach:
-
-#### Phase 1: Attribute Validation
-
-The test examines all `<keyword>` elements in the DDI metadata and identifies
-candidates that have:
-
-- `vocab` attribute equal to `"ELSST"` **AND**
-- `vocabURI` attribute containing `"elsst.cessda.eu"`
-
-#### Phase 2: API Validation
-
-For candidate keywords from Phase 1, the test:
-
-- Queries the ELSST Topics API with the keyword text and language code
-- Compares the keyword text (case-insensitive) against returned labels
-- Returns "pass" immediately when a match is found
-
-Keywords missing either required attribute are excluded from validation,
-even if they might match ELSST API labels.
-
-### Approved DDI Vocabularies Validation
-
-The test:
-
-1. Fetches DDI metadata via OAI-PMH endpoint
-1. For each of Analysis Unit, Time Method, Mode of Collection:
-    1. Extracts relevant attributes using XPath
-    1. Retrieves list of terms from CESSDA vocabulary API
-    1. Compares each attribute value against the list of terms
-1. Returns "pass" if any term matches any value
-
-### DDI Sampling Procedure Vocabulary Validation
-
-The test:
-
-1. Fetches DDI metadata via OAI-PMH endpoint
-1. Extracts `sampProc` attribute values using XPath
-1. Retrieves list of Sampling Procedure terms from CESSDA vocabulary API
-1. Compares each attribute value against list of terms
-1. Returns "pass" if any term matches any value
-
-### CESSDA Topic Classification Vocabulary Validation
-
-The test:
-
-1. Fetches DDI metadata via OAI-PMH endpoint
-1. Extracts `topcClas` attribute values using XPath
-1. Retrieves list of Topic Classification terms from CESSDA vocabulary API
-1. Compares each attribute value against list of terms
-1. Returns "pass" if any term matches any value
+See [Test Logic](Test_Logic.md) for details.
 
 ## Technical Details
 
 - **Language**: Java 21
-- **Dependencies**: Jackson (JSON parsing), Java HTTP Client, javax.xml
-    (XML/XPath processing)
 - **Concurrency**: Uses virtual threads for parallel ELSST API queries
 - **Timeouts**: 10-second connect timeout, 30-second request timeout
 - **Standards**: DDI 2.5 metadata via OAI-PMH, CESSDA controlled vocabularies,
     DDI controlled vocabularies
 - **Caching**: Vocabulary terms are cached to reduce API calls
+
+## Dependencies
+
+### Runtime Dependencies
+
+- **Spring Boot Starter** - Core Spring Boot framework
+- **Spring Boot Starter Web** - Web application support with embedded Tomcat
+- **CESSDA FAIR Tests** (`eu.cessda.fairtests:fair-tests:1.0.0-SNAPSHOT`)
+- Core FAIR testing library
+
+### Test Dependencies
+
+- **Spring Boot Starter Test** - Testing framework including JUnit, Mockito,
+    and Spring Test utilities
+
+### Build Requirements
+
+- **Java 21** or higher
+- **Maven 3.6+** (recommended)
+- **Spring Boot 4.0.1**
+
+### Maven Dependency Management
+
+This project uses Spring Boot's dependency management to ensure compatible
+versions of all Spring dependencies. The parent POM coordinates are:
+
+```xml
+<parent>
+    <groupId>eu.cessda.fairtests</groupId>
+    <artifactId>parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</parent>
+```
+
+### Build Plugins
+
+- **Spring Boot Maven Plugin** (4.0.1) - Packages the application as an
+    executable JAR with embedded dependencies
 
 ### Shared Components
 
@@ -272,7 +256,6 @@ The consolidated FairTests class eliminates code duplication by sharing:
 - Document fetching from OAI-PMH endpoint
 - URL parsing and record identifier extraction
 - Vocabulary API integration
-- Logging utilities
 
 ## API Endpoints
 
@@ -281,24 +264,21 @@ The application integrates with the following services and hosted vocabularies:
 - **OAI-PMH Endpoint**: `https://datacatalogue.cessda.eu/oai-pmh/v0/oai`
 - **ELSST Topics API**: `https://skg-if-openapi.cessda.eu/api/topics`
 - **Access Rights Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0`
-- **Topic Classification Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.0.0?languageVersion=en-4.0.0&format=json`
-- **Analysis Unit Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/1.2.0?languageVersion=en-1.2.0&format=json`
-- **Time Method Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.1?languageVersion=en-1.2.1&format=json`
-- **Colection Mode Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/4.0.0?languageVersion=en-4.0.0&format=json`
+- **Topic Classification Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.2.3?languageVersion=en-4.2.3&format=json`
+- **Analysis Unit Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/2.1.3?languageVersion=en-2.1.3&format=json`
+- **Time Method Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.3?languageVersion=en-1.2.3&format=json`
+- **Colection Mode Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/5.0.0?languageVersion=en-5.0.0&format=json`
 - **PID Types Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0`
-- **Sampling Procedure Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.0?languageVersion=en-2.0.0&format=json`
+- **Sampling Procedure Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.1?languageVersion=en-2.0.1&format=json`
 
-## Description
+## Adding a new test
 
-See the [Description](Description.md) file for comprehensive technical
-documentation including:
+As well as adding the methods to run the new test to
+[FairTests.java](api/src/main/java/eu/cessda/fairtests/FairTests.java) you need to:
 
-- Detailed API integration information
-- XML processing and XPath expressions
-- Error handling and logging
-- Thread safety considerations
-- Complete input/output specifications
-- Vocabulary caching strategies
+- extend the runTest switch statement
+- extend the [TestType](api/src/main/java/eu/cessda/fairtests/TestType.java) enumeration
+- add Unit tests in [FairTestsTests](api/src/test/java/eu/cessda/fairtests/FairTestsTest.java)
 
 ## Building from Source
 
@@ -322,14 +302,14 @@ mvn clean package
 
 This creates two JAR files in the `target/` directory:
 
-- `fair-tests-1.0.0.jar` - Standard JAR
-- `fair-tests-1.0.0-jar-with-dependencies.jar` - Executable JAR with all
-    dependencies
+- `fair-tests-1.0.0-SNAPSHOT.jar` - Standard JAR
+- `fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar`
+    Executable JAR with all dependencies
 
 ### Generate documentation
 
 ```bash
-mvn javadoc:javadoc
+mvn clean install javadoc:javadoc
 ```
 
 Documentation will be available in `target/site/apidocs/`
