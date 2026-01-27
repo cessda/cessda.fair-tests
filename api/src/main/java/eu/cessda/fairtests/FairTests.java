@@ -36,7 +36,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.*;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -51,17 +50,23 @@ import java.util.stream.Collectors;
 
 /**
  * <H2>FairTests</H2>
- * <p>
- * Consolidated utility class for checking CESSDA Data Catalogue records against
+ * <P>
+ * Consolidated utility class for checking DDI2.5 records against
  * various FAIR data criteria:
- * - Access Rights compliance
- * - Persistent Identifier (PID) schema validation
- * - ELSST controlled vocabulary keyword validation
- * - Use of CESSDA controlled vocabularies
- * <p>
- * All tests fetch DDI 2.5 metadata via the CESSDA OAI-PMH endpoint and validate
- * against approved vocabularies from the CESSDA vocabulary service.
- * <p>
+ * <UL>
+ * <LI>Access Rights compliance</LI>
+ * <LI>Persistent Identifier (PID) schema validation</LI>
+ * <LI>ELSST controlled vocabulary keyword validation</LI>
+ * <LI>CESSDA Topic Classification vocabulary usage</LI>
+ * <LI>DDI Analysis Unit vocabulary usage</LI>
+ * <LI>DDI Collection Mode vocabulary usage</LI>
+ * <LI>DDI Time Method vocabulary usage</LI>
+ * <LI>DDI Sampling Procedure vocabulary usage</LI>
+ * <LI>Provenance information presence</LI>
+ * </UL>
+ * <P>
+ * All tests fetch DDI 2.5 metadata via the specified URL.
+ * <P>
  * Return values for all tests:
  * <UL>
  * <LI>"pass": the record meets the criteria</LI>
@@ -76,14 +81,14 @@ public class FairTests {
 
     // Namespace and URL constants
     private static final String DDI_NAMESPACE = "ddi:codebook:2_5";
-    // OAI-PMH endpoint base URL
-    private static final String OAI_PMH_BASE = "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=";
-    // Detail URL segment
-    private static final String DETAIL_SEGMENT = "/detail/";
-    // Logging messages
+   // Logging messages
     private static final String ERROR = "Error: ";
     // Logging messages
     private static final String FETCHED = "Fetched ";
+
+     // ELSST API base URL
+    private static final String ELSST_API_BASE =
+           "https://skg-if-staging.cessda.eu/api/topics";
 
     // Access Rights vocabulary URL
     private static final String ACCESS_VOCAB_URL =
@@ -91,24 +96,21 @@ public class FairTests {
     // PID vocabulary URL
     private static final String PID_VOCAB_URL =
             "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
-    // ELSST API and vocabulary URLs
-    private static final String ELSST_API_BASE =
-            "https://skg-if-openapi.cessda.eu/api/topics";
     // Topic Classification vocabulary URL
     private static final String TOPIC_CLASS_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.0.0?languageVersion=en-4.0.0&format=json";
+            "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.2.3?languageVersion=en-4.2.3&format=json";
     // Recommended DDI vocabularies URLs
     private static final String ANALYSIS_UNIT_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/1.2.0?languageVersion=en-1.2.0&format=json";
+            "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/2.1.3?languageVersion=en-2.1.3&format=json";
     // Time Method vocabulary URL
     private static final String TIME_METHOD_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.1?languageVersion=en-1.2.1&format=json";
+            "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.3?languageVersion=en-1.2.3&format=json";
     // Sampling Procedure vocabulary URL
     private static final String SAMPLING_PROC_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.0?languageVersion=en-2.0.0&format=json";
+            "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.1?languageVersion=en-2.0.1&format=json";
     // Mode of Collection vocabulary URL
     private static final String COLLECTION_MODE_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/4.0.0?languageVersion=en-4.0.0&format=json";
+            "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/5.0.0?languageVersion=en-5.0.0&format=json";
 
     // ELSST constants
     private static final String ELSST_VOCAB_NAME = "ELSST";
@@ -140,17 +142,21 @@ public class FairTests {
     private final XPathExpression samplingProcXPath;
     private final XPathExpression timeMethodXPath;
     private final XPathExpression topicClassXPath;
+    private final XPathExpression publisherXPath;
+    private final XPathExpression authorXPath;
+    private final XPathExpression grantNoXPath;
 
     /**
-     * Constructor initialises shared components.
-     *
-     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
-     * @throws XPathExpressionException     if any constant XPaths cannot be compiled.
+     * Create a new instance of {@link FairTests}
      */
-    public FairTests() throws ParserConfigurationException, XPathExpressionException {
+    public FairTests() {
         var documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
-        this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        try {
+            this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        } catch (ParserConfigurationException e) {
+            throw new IllegalStateException(e);
+        }
 
         // Set XPath namespace context
         XPath xPath = XPathFactory.newInstance().newXPath();
@@ -169,32 +175,53 @@ public class FairTests {
         });
 
         // Compile XPaths
-        ddiCodebookXPath = xPath.compile("//ddi:codeBook");
-        accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:typeOfAccess");
-        analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
-        collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
-        keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
-        pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
-        samplingProcXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc");
-        timeMethodXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth");
-        topicClassXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas");
+        try {
+            ddiCodebookXPath = xPath.compile("//ddi:codeBook");
+            // for DDI2.5 use conditions element as typeOfAccess is not available until DDI2.6
+            accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:useStmt/ddi:conditions");
+            analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
+            collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
+            keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
+            pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
+            samplingProcXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc");
+            timeMethodXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth");
+            topicClassXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas");
+            // Provenance paths
+            publisherXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:distStmt/ddi:distrbtr");
+            authorXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:rspStmt/ddi:AuthEnty");
+            grantNoXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:prodStmt/ddi:grantNo");
+        } catch (XPathExpressionException e) {
+            throw new IllegalStateException(e);
+        }
     }
+
+    /**
+     * Get a comma-separated list of valid test types.
+     * 
+     * @return String of valid test types
+     */
+    private static String getValidTestTypes() {
+    return Arrays.stream(TestType.values())
+        .map(TestType::testName)
+        .collect(Collectors.joining(", "));
+}
 
     /**
      * Main method for command-line execution.
      *
-     * @param args args[0]: test type ("access-rights", "pid", "elsst-keywords")
-     *             args[1]: CESSDA detail URL
+     * @param args args[0]: test type (e.g. "access-rights", "pid", "elsst-keywords", etc.)
+     *             args[1]: A URL that should return DDI2.5 metadata
      * @throws ParseException               if the command line is invalid.
-     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
-     * @throws XPathExpressionException     if any constant XPaths cannot be compiled.
      */
-    public static void main(String[] args) throws ParseException, ParserConfigurationException, XPathExpressionException {
+    @SuppressWarnings("java:S106")
+    public static void main(String[] args) throws ParseException {
 
         // Set logger level
         logger.setLevel(Level.INFO);
 
         // Command line options
+        @SuppressWarnings("deprecation")
+        HelpFormatter formatter = new HelpFormatter();
         var options = new Options();
         var commandLine = new DefaultParser().parse(options, args);
 
@@ -203,8 +230,8 @@ public class FairTests {
             testMap.put(testType.testName(), testType);
         }
 
-        if (commandLine.getArgList().size() < 2 || testMap.containsKey(commandLine.getArgList().get(0))) {
-            new HelpFormatter().printHelp("FairTests <test-type> <url>\ntest types: access-rights, pid, elsst-keywords", options);
+        if (commandLine.getArgList().size() < 2 || !testMap.containsKey(commandLine.getArgList().get(0))) {
+            formatter.printHelp("FairTests <test-type> <url>\ntest types: " + getValidTestTypes(), null, options, null, false);
             System.exit(1);
         }
 
@@ -218,133 +245,118 @@ public class FairTests {
         Result result = tests.runTest(test, url);
 
         logger.log(Level.INFO, "Result: {0}", result);
+        System.out.println(result); 
         System.exit(Result.PASS == result ? 0 : 1);
     }
 
+    /**
+     * Fetch the default approved Access Rights terms.
+     * @return Set of approved Access Rights terms
+     */
     private static Set<String> defaultAccessRightsTerms() {
-        return Set.of("Open", "Restricted");
+        return Set.of("open", "restricted");
+    }
+
+
+    /**
+     * Fetch the default approved PID schemas.
+     * @return Set of approved PID schema names
+     */
+    private static Set<String> defaultPidSchemas() {
+        return Set.of("DOI", "Handle", "URN", "ARK");
     }
 
     // ============================================================================
     // PUBLIC API METHODS
     // ============================================================================
 
-    private static Set<String> defaultPidSchemas() {
-        return Set.of("DOI", "Handle", "URN", "ARK");
-    }
-
+    /**
+     * Run the specified test against the given URL.
+     * @param test The test to run
+     * @param url A URL that should return DDI2.5 metadata
+     * @return Result of the test: "pass", "fail", or "indeterminate"
+     */
     public Result runTest(TestType test, String url) {
         return switch (test) {
             case ACCESS_RIGHTS -> containsApprovedAccessRights(url);
             case PID -> containsApprovedPid(url);
             case ELSST_KEYWORDS -> containsElsstKeywords(url);
-            case DDI_VOCABS -> containsRecommendedDdiVocabularies(url);
-            case DDI_SAMPLEPROC -> containsDdiSamplingProcedureTerms(url);
             case TOPIC_CLASS -> containsCessdaTopicClassificationTerms(url);
+            case DDI_ANALYSIS_UNIT -> containsDdiAnalysisUnit(url);
+            case DDI_COLLECTION_MODE -> containsDdiCollectionMode(url);
+            case DDI_TIME_METHOD -> containsDdiTimeMethod(url);
+            case DDI_SAMPLEPROC -> containsDdiSamplingProcedureTerms(url);
+            case PROVENANCE -> containsProvenanceInformation(url);
+            default -> Result.INDETERMINATE;
         };
     }
 
     /**
-     * Checks whether a CESSDA record contains an approved Access Rights term.
+     * Checks whether an DDI2.5 record contains an approved Access Rights term.
      *
-     * @param url The CESSDA detail URL
+     * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
     public Result containsApprovedAccessRights(String url) {
         try {
-            String recordId = extractRecordIdentifier(url);
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkAccessRights(doc, recordId);
+            Document doc = fetchAndParseDocument(url);
+            return checkAccessRights(doc);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Couldn't check access rights", e);
             return Result.INDETERMINATE;
         }
     }
 
-    // ============================================================================
-    // SHARED UTILITY METHODS
-    // ============================================================================
 
     /**
-     * Checks whether a CESSDA record contains an approved PID schema.
+     * Checks whether a DDI2.5 record contains an approved PID schema.
      *
-     * @param url The CESSDA detail URL
+     * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
     public Result containsApprovedPid(String url) {
         try {
-            String recordId = extractRecordIdentifier(url);
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkPidSchemas(doc, recordId);
+            Document doc = fetchAndParseDocument(url);
+            return checkPidSchemas(doc);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Couldn't check approved PIDs", e);
+        } catch (IllegalArgumentException e) {
+            logger.log(Level.SEVERE, "Invalid argument: ", e);
         }
         return Result.INDETERMINATE;
     }
 
     /**
-     * Checks whether a CESSDA record contains ELSST keywords that meet ALL three criteria:
-     * <OL>
-     * <LI>vocab attribute equals "ELSST"</LI>
-     * <LI>vocabURI attribute contains "elsst.cessda.eu"</LI>
-     * <LI>Keyword text matches an ELSST API label</LI>
-     * </OL>
+     * Checks whether a DDI2.5 record contains ELSST keywords that meet ALL three criteria:
+     * The vocab attribute equals "ELSST" (exact match, case-sensitive)
+     * The vocabURI attribute contains "elsst.cessda.eu" (substring match)
+     * The keyword value exists in the ELSST vocabulary (case-insensitive match)
      *
-     * @param url The CESSDA detail URL
+     * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
     public Result containsElsstKeywords(String url) {
         try {
-            String recordId = extractRecordIdentifier(url);
-            logger.log(Level.INFO, "Extracted record identifier: {0}", recordId);
-
-            var languageCode = extractLanguageCodeFromUrl(new URI(url));
-            logger.log(Level.INFO, "Extracted language code: {0}", languageCode);
-
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return validateElsstKeywords(doc, languageCode);
-        } catch (IOException | URISyntaxException e) {
+            Document doc = fetchAndParseDocument(url);
+            return validateElsstKeywords(doc);
+        } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to check if a record contains ELSST keywords: ", e);
             return Result.INDETERMINATE;
         }
     }
 
-    /**
-     * Checks whether a CESSDA record uses recommended DDI controlled
-     * vocabularies.
-     * Tests for presence of:
-     * - DDI Analysis Unit
-     * - DDI Time Method
-     * - DDI Mode of Collection
-     *
-     * @param url The CESSDA detail URL
-     * @return "pass", "fail", or "indeterminate"
-     */
-    public Result containsRecommendedDdiVocabularies(String url) {
-        try {
-            String recordId = extractRecordIdentifier(url);
-            logger.log(Level.INFO, "Checking CESSDA vocabularies for record: {0}", recordId);
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkRecommendedDdiVocabularies(doc, recordId);
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, ERROR, e);
-            return Result.INDETERMINATE;
-        }
-    }
 
     /**
-     * Checks whether a CESSDA record uses Topic Classification vocabulary
+     * Checks whether a DDI2.5 record uses Topic Classification vocabulary
      * terms.
      *
-     * @param url The CESSDA detail URL
+     * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
     public Result containsCessdaTopicClassificationTerms(String url) {
         try {
-            String recordId = extractRecordIdentifier(url);
-            logger.log(Level.INFO, "Checking Topic Classification for record: {0}", recordId);
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkCessdaTopicClassification(doc, recordId);
+            Document doc = fetchAndParseDocument(url);
+            return checkCessdaTopicClassification(doc);
         } catch (IOException e) {
             logger.log(Level.SEVERE, ERROR, e);
             return Result.INDETERMINATE;
@@ -352,40 +364,84 @@ public class FairTests {
     }
 
     /**
-     * Checks whether a CESSDA record uses DDI Sampling Procedure vocabulary terms.
+     * Checks whether a DDI2.5 record uses the DDI Analysis Unit vocabulary.
      *
-     * @param url The CESSDA detail URL
+     * @param url A URL that should return DDI2.5 metadata
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public Result containsDdiAnalysisUnit(String url) {
+        try {
+            Document doc = fetchAndParseDocument(url);
+            return checkAnalysisUnit(doc);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Checks whether a DDI2.5 record uses the DDI Collection Mode vocabulary.
+     *
+     * @param url A URL that should return DDI2.5 metadata
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public Result containsDdiCollectionMode(String url) {
+        try {
+            Document doc = fetchAndParseDocument(url);
+            return checkCollectionMode(doc);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
+        }
+    }
+
+     /**
+     * Checks whether a DDI2.5 record uses the DDI Time Method vocabulary.
+     *
+     * @param url A URL that should return DDI2.5 metadata
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public Result containsDdiTimeMethod(String url) {
+        try {
+            Document doc = fetchAndParseDocument(url);
+            return checkTimeMethod(doc);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Checks whether a DDI2.5 record uses DDI Sampling Procedure vocabulary terms.
+     *
+     * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
     public Result containsDdiSamplingProcedureTerms(String url) {
         try {
-            String recordId = extractRecordIdentifier(url);
-            logger.log(Level.INFO, "Checking Sampling Procedure for record: {0}", recordId);
-
-            Document doc = fetchAndParseDocument(OAI_PMH_BASE + recordId);
-            return checkDdiSamplingProcedure(doc, recordId);
+            Document doc = fetchAndParseDocument(url);
+            return checkDdiSamplingProcedure(doc);
         } catch (IOException e) {
             logger.log(Level.SEVERE, ERROR, e);
             return Result.INDETERMINATE;
         }
     }
 
+
     /**
-     * Extract the record identifier from the CESSDA detail URL.
+     * Checks whether a DDI2.5 record contains provenance information.
      *
-     * @param url The CESSDA detail URL
-     * @return The record identifier
+     * @param url A URL that should return DDI2.5 metadata
+     * @return "pass", "fail", or "indeterminate"
      */
-    private String extractRecordIdentifier(String url) {
-        if (!url.contains(DETAIL_SEGMENT)) {
-            throw new IllegalArgumentException("URL must contain '" + DETAIL_SEGMENT + "': " + url);
+    public Result containsProvenanceInformation(String url) {
+        try {
+            Document doc = fetchAndParseDocument(url);
+            return checkProvenance(doc);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, ERROR, e);
+            return Result.INDETERMINATE;
         }
-        String cleanUrl = url.split("\\?")[0];
-        String id = cleanUrl.substring(cleanUrl.indexOf(DETAIL_SEGMENT) + DETAIL_SEGMENT.length());
-        if (id.isEmpty()) {
-            throw new IllegalArgumentException("No record identifier in URL: " + url);
-        }
-        return id;
     }
 
     /**
@@ -419,44 +475,32 @@ public class FairTests {
             synchronized (ddiCodebookXPath) {
                 Node codeBookNode = (Node) ddiCodebookXPath.evaluate(oaiDoc, XPathConstants.NODE);
                 if (codeBookNode == null) {
-                    throw new IllegalArgumentException("No DDI codeBook found");
-                }
+                    logger.log(Level.WARNING, "No DDI codeBook found in OAI-PMH response from: {0}", url);
+                    throw new IOException("Failed to extract DDI codeBook from OAI-PMH response: No DDI codeBook found");
+                } 
 
                 Document ddiDoc = documentBuilder.newDocument();
                 ddiDoc.appendChild(ddiDoc.importNode(codeBookNode, true));
                 return ddiDoc;
             }
-        } catch (XPathExpressionException e) {
-            // parser and xpath expression should always be valid
-            throw new IllegalStateException(e);
-        } catch (SAXException e) {
+
+        } catch (IOException | SAXException | XPathExpressionException e) {
             throw new IOException("Failed to parse XML response", e);
         }
     }
 
-    // ============================================================================
+
+     // ============================================================================
     // ACCESS RIGHTS VALIDATION
     // ============================================================================
 
     /**
-     * Extract the language code from the URL query parameter.
-     */
-    private String extractLanguageCodeFromUrl(URI uri) {
-        String query = uri.getQuery();
-
-        if (query != null) {
-            for (String param : query.split("&")) {
-                String[] kv = param.split("=", 2);
-                if (kv.length == 2 && kv[0].equalsIgnoreCase("lang") && kv[1].matches("^[a-zA-Z]{2}$")) {
-                    return kv[1].toLowerCase();
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private Result checkAccessRights(Document ddiDoc, String recordId) {
+     * Check the access rights in the DDI document.
+     *
+     * @param ddiDoc The DDI document to check
+     * @return Result of the check
+    */
+    private Result checkAccessRights(Document ddiDoc) {
         Set<String> approvedValues = getApprovedAccessRights();
 
         try {
@@ -466,31 +510,90 @@ public class FairTests {
                 logger.log(Level.INFO, "NodeList length: {0}", nodes.getLength());
 
                 if (nodes.getLength() == 0) {
-                    logger.log(Level.INFO, "No Access Rights element found in DDI document for record: {0}", recordId);
+                    logger.log(Level.INFO, "No Access Rights element found in DDI document");
                     return Result.FAIL;
                 }
 
                 for (int i = 0; i < nodes.getLength(); i++) {
-                    String val = nodes.item(i).getTextContent().trim();
-                    if (approvedValues.contains(val)) {
-                        logger.log(Level.INFO, "Match found: {0}", val);
+                    String val = nodes.item(i).getTextContent();
+                    logger.log(Level.INFO, "Raw value: [{0}]", val);
+
+                    String trimmedVal = val.trim().toLowerCase();
+                    logger.log(Level.INFO, "Trimmed value: [{0}]", trimmedVal);
+
+                    // check if any approved value is contained within the trimmed value (case-insensitive substring match)
+                    boolean match = approvedValues.stream()
+                            .map(String::toLowerCase)
+                            .anyMatch(trimmedVal::contains);
+
+                    if (match) {
+                        logger.log(Level.INFO, "Approved Access Rights found: {0}", trimmedVal);
                         return Result.PASS;
                     }
                 }
 
-                logger.log(Level.INFO, "No approved Access Rights found in record: {0}", recordId);
+                logger.log(Level.INFO, "No approved Access Rights found in record");
                 return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
-            throw new IllegalStateException(e);
+            logger.log(Level.SEVERE, "Error checking document for approved Access Rights: {0}", e.getMessage());
+            return Result.INDETERMINATE;
         }
+    }
+
+    /**
+     * Checks whether a DDI2.5 record contains provenance information.
+     * Only one of publisher, author, or grant number is required.
+     *
+     * @param ddiDoc The DDI2.5 document to check
+     * @return "pass", "fail", or "indeterminate"
+     */
+    public Result checkProvenance(Document ddiDoc) {
+        try {
+            NodeList publisherNodes;
+            NodeList authorNodes;
+            NodeList grantNoNodes;
+            synchronized (publisherXPath) {
+                publisherNodes = (NodeList) publisherXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            }
+            synchronized (authorXPath) {
+                authorNodes = (NodeList) authorXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            }
+            synchronized (grantNoXPath) {
+                grantNoNodes = (NodeList) grantNoXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+            }
+
+            boolean hasPublisher = publisherNodes != null && publisherNodes.getLength() > 0;
+            boolean hasAuthor = authorNodes != null && authorNodes.getLength() > 0;
+            boolean hasGrantNo = grantNoNodes != null && grantNoNodes.getLength() > 0;
+
+            if (hasPublisher || hasAuthor || hasGrantNo) {
+                if (hasPublisher) {
+                    logger.log(Level.INFO, "Publisher information found {0}", publisherNodes.item(0).getTextContent());
+                }
+                if (hasAuthor) {
+                    logger.log(Level.INFO, "Author information found {0}", authorNodes.item(0).getTextContent());
+                }
+                if (hasGrantNo) {
+                    logger.log(Level.INFO, "Grant number information found {0}", grantNoNodes.item(0).getTextContent());
+                }
+                return Result.PASS;
+            } else {
+                logger.log(Level.INFO, "Provenance information missing in record");
+                return Result.FAIL;
+            }
+        } catch (XPathExpressionException e) {
+            logger.log(Level.SEVERE, "Error checking provenance information: {0}", e.getMessage());
+            return Result.INDETERMINATE;
+        }
+       
     }
 
     // ============================================================================
     // PID SCHEMA VALIDATION
     // ============================================================================
 
-    private Result checkPidSchemas(Document ddiDoc, String recordId) {
+    private Result checkPidSchemas(Document ddiDoc) {
         try {
             NodeList idNoNodes;
             synchronized (pidXPath) {
@@ -498,7 +601,7 @@ public class FairTests {
             }
 
             if (idNoNodes == null || idNoNodes.getLength() == 0) {
-                logger.log(Level.INFO, "No IDNo elements found in DDI document for record: {0}", recordId);
+                logger.log(Level.INFO, "No IDNo elements found in DDI document");
                 return Result.FAIL;
             }
 
@@ -507,14 +610,15 @@ public class FairTests {
                 Node idNoNode = idNoNodes.item(i);
                 Node agencyAttr = idNoNode.getAttributes().getNamedItem("agency");
                 if (agencyAttr != null) {
+                    // make case insensitive comparison
                     String agency = agencyAttr.getNodeValue();
-                    if (approvedSchemas.contains(agency)) {
-                        logger.log(Level.INFO, "Found approved PID schema ''{0}'' in record: {1}", new String[]{agency, recordId});
+                    if (approvedSchemas.stream().anyMatch(approved -> approved.equalsIgnoreCase(agency))) {
+                        logger.log(Level.INFO, "Approved PID schema found: {0}", agency);
                         return Result.PASS;
                     }
                 }
             }
-            logger.log(Level.INFO, "No approved PID schemas found in record: {0}", recordId);
+            logger.log(Level.INFO, "No approved PID schemas found in record");
             return Result.FAIL;
         } catch (XPathExpressionException e) {
             logger.log(Level.SEVERE, "Error checking document for approved PID: {0}", e.getMessage());
@@ -546,12 +650,17 @@ public class FairTests {
             return cachedAccessRightsTerms;
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch AccessRights vocabulary: ", e);
+            logger.log(Level.SEVERE, "Failed to fetch AccessRights vocabulary: {0}", e.getMessage());
             return defaultAccessRightsTerms();
         }
     }
 
-    private Result validateElsstKeywords(Document doc, String languageCode) {
+    /**
+     * Validate ELSST keywords in the DDI document.
+     */
+    @SuppressWarnings("java:S2259")
+    private Result validateElsstKeywords(Document doc) {
+        String languageCode = null;
         try {
             NodeList nodes;
             synchronized (keywordXPath) {
@@ -572,7 +681,11 @@ public class FairTests {
 
                 String vocabAttr = element.getAttribute("vocab");
                 String vocabURI = element.getAttribute("vocabURI");
+                languageCode = element.getAttribute("xml:lang");
                 String text = element.getTextContent().trim();
+
+                logger.log(Level.INFO, "Processing keyword node: text=''{0}'', vocab=''{1}'', vocabURI=''{2}'', lang=''{3}''",
+                        new Object[]{text, vocabAttr, vocabURI, languageCode});
 
                 if (!text.isEmpty()) {
                     boolean hasVocab = ELSST_VOCAB_NAME.equals(vocabAttr);
@@ -582,19 +695,19 @@ public class FairTests {
 
                     if (hasVocab && hasVocabURI) {
                         candidates.add(new KeywordCandidate(text.trim(), true, true));
-                        logger.log(Level.INFO, "Candidate keyword found: ''{0}'' (has vocab and vocabURI)", text);
+                        logger.log(Level.INFO, "Candidate keyword found: ''{0}'' (has vocab and vocabURI) for language code: {1}", new Object[]{text, languageCode} );
                     }
                 }
             }
 
             if (candidates.isEmpty()) {
-                logger.info("No keywords found with both vocab='ELSST' and vocabURI containing 'elsst.cessda.eu'");
+                logger.log(Level.INFO, "No keywords found with both vocab='ELSST' and vocabURI containing 'elsst.cessda.eu' for language code: {0}", languageCode);
                 return Result.FAIL;
             }
 
             logger.log(Level.INFO, "Checking {0} candidate keyword(s) via ELSST API", candidates.size());
 
-            if (languageCode == null) {
+            if (languageCode.isEmpty()) {
                 logger.info("No language code available for ELSST API validation");
                 return Result.INDETERMINATE;
             }
@@ -607,6 +720,11 @@ public class FairTests {
         }
     }
 
+    /**
+     * Fetch the approved PID schemas from the CESSDA vocabulary service.
+     *
+     * @return Set of approved PID schema names
+     */
     private Set<String> getApprovedPidSchemas() {
         if (!cachedPidSchemas.isEmpty()) {
             return cachedPidSchemas;
@@ -625,11 +743,17 @@ public class FairTests {
             return cachedPidSchemas;
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch PID vocabulary", e);
+            logger.log(Level.SEVERE, "Failed to fetch PID vocabulary: {0}", e.getMessage());
             return defaultPidSchemas();
         }
     }
 
+    /**
+     * Validate ELSST keywords in the DDI document.
+     * @param candidates   List of candidate keywords with vocab and vocabURI attributes
+     * @param languageCode Language code for ELSST API query
+     * @return Result of the validation
+     */
     private Result validateCandidatesAgainstElsstApi(List<KeywordCandidate> candidates, String languageCode) {
         try {
 
@@ -642,6 +766,7 @@ public class FairTests {
                     .collect(Collectors.toSet());
 
             for (KeywordCandidate candidate : candidates) {
+                logger.log(Level.INFO, "Checking candidate keyword against ELSST API results: ''{0}''", candidate.text());
                 if (elsstSet.contains(candidate.text().toUpperCase())) {
                     logger.info(Result.PASS + ": Keyword '" + candidate.text() + "' meets ALL three conditions (vocab, vocabURI, and API match)");
                     return Result.PASS;
@@ -657,6 +782,10 @@ public class FairTests {
         }
     }
 
+    /**
+     * Fetch ELSST keywords from the ELSST API for the given list of keywords and language code.
+     * @return a set of ELSST keywords
+     */
     private Set<String> fetchElsstKeywords(List<String> keywords, String langCode) throws IOException {
         if (!cachedElsstKeywords.isEmpty()) {
             return cachedElsstKeywords;
@@ -664,11 +793,12 @@ public class FairTests {
 
         String encodedLangCode = URLEncoder.encode(langCode, StandardCharsets.UTF_8);
 
-
         for (var k : keywords) {
             String url = ELSST_API_BASE
                     + "?filter=cf.search.labels:" + URLEncoder.encode(k, StandardCharsets.UTF_8)
                     + ",cf.search.language:" + encodedLangCode;
+
+            logger.log(Level.INFO, "Fetching ELSST keywords from API URL: {0}", url);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -683,11 +813,15 @@ public class FairTests {
             }
 
             Set<String> keywordsToCache = new HashSet<>();
-            JsonNode results = mapper.readTree(response.body()).path("results");
-            for (JsonNode r : results) {
-                JsonNode labels = r.path("labels");
-                if (labels.isObject()) {
-                    labels.propertyStream().forEach(e -> keywordsToCache.add(e.getKey() + ":\"" + e.getValue().asText() + "\""));
+            JsonNode results = mapper.readTree(response.body()).path("@graph");
+            for (JsonNode arrayNode : results) {  // Iterate outer array
+                for (JsonNode topicNode : arrayNode) {  // Iterate inner array
+                    JsonNode labels = topicNode.path("labels");
+                    if (labels.isObject()) {
+                        labels.propertyStream().forEach(e ->
+                                keywordsToCache.add(e.getKey() + ":\"" + e.getValue().asText() + "\"")
+                        );
+                    }
                 }
             }
             cachedElsstKeywords.addAll(keywordsToCache);
@@ -701,37 +835,14 @@ public class FairTests {
     // VOCABULARIES VALIDATION
     // ============================================================================
 
-    /**
-     * Check the DDI document for recommended DDI controlled vocabularies.
-     *
-     * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
-     * @return "pass", "fail", or "indeterminate"
-     */
-    private Result checkRecommendedDdiVocabularies(Document ddiDoc, String recordId) {
-
-        // Check Analysis Unit
-        boolean foundAny = checkAnalysisUnit(ddiDoc, recordId)
-                || checkTimeMethod(ddiDoc, recordId)
-                || checkCollectionMode(ddiDoc, recordId);
-
-        if (foundAny) {
-            logger.info("Record contains at least one recommended DDI controlled vocabulary");
-            return Result.PASS;
-        } else {
-            logger.log(Level.INFO, "No recommended DDI vocabularies found in record: {0}", recordId);
-            return Result.FAIL;
-        }
-    }
 
     /**
      * Check for CESSDA Topic Classification in the DDI document.
      *
      * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
      * @return "pass", "fail", or "indeterminate"
      */
-    private Result checkCessdaTopicClassification(Document ddiDoc, String recordId) {
+    private Result checkCessdaTopicClassification(Document ddiDoc) {
         try {
             NodeList nodes;
             synchronized (topicClassXPath) {
@@ -756,10 +867,10 @@ public class FairTests {
                 }
 
             }
-            logger.log(Level.INFO, "No approved Topic Classification found in record: {0}", recordId);
+            logger.log(Level.INFO, "No approved Topic Classification found in record");
             return Result.FAIL;
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Topic Classification", e);
+            logger.log(Level.SEVERE, "Error checking Topic Classification: {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -768,32 +879,41 @@ public class FairTests {
      * Check for DDI Analysis Unit in the DDI document.
      *
      * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
-     * @return true if approved Analysis Unit found, false otherwise
+     * @return "pass", "fail", or "indeterminate"
      */
-    private boolean checkAnalysisUnit(Document ddiDoc, String recordId) {
+    private Result checkAnalysisUnit(Document ddiDoc) {
         try {
             synchronized (analysisUnitXPath) {
                 NodeList nodes = (NodeList) analysisUnitXPath.evaluate(ddiDoc, XPathConstants.NODESET);
                 if (nodes == null || nodes.getLength() == 0) {
                     logger.info("No Analysis Unit terms found");
-                    return false;
+                    return Result.FAIL;
                 }
 
                 Set<String> approvedTerms = getApprovedAnalysisUnitTerms();
+            
                 for (int i = 0; i < nodes.getLength(); i++) {
-                    String text = nodes.item(i).getTextContent().trim();
-                    if (!text.isEmpty() && approvedTerms.contains(text)) {
-                        logger.log(Level.INFO, "Found DDI Analysis Unit: {0}", text);
-                        return true;
+                    // Get only the direct text content, excluding child elements
+                    StringBuilder description = new StringBuilder();
+                    Element anlyUnit = (Element) nodes.item(i);
+                    for (Node child = anlyUnit.getFirstChild(); child != null; child = child.getNextSibling()) {
+                        if (child.getNodeType() == Node.TEXT_NODE) {
+                            description.append(child.getTextContent());
+                        }
+                    }
+                    // Trim and check the description text
+                    String descriptionText = description.toString().trim();
+                    if (!descriptionText.isEmpty() && approvedTerms.contains(descriptionText)) {
+                        logger.log(Level.INFO, "Found Analysis Unit term: {0}", descriptionText);
+                        return Result.PASS;
                     }
                 }
-                logger.log(Level.INFO, "No approved Analysis Unit term found in record: {0}", recordId);
-                return false;
+                logger.log(Level.INFO, "No approved Analysis Unit term found in record");
+                return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Analysis Unit", e);
-            return false;
+            logger.log(Level.SEVERE, "Error checking Analysis Unit {0}", e.getMessage());
+            return Result.INDETERMINATE;
         }
     }
 
@@ -801,10 +921,9 @@ public class FairTests {
      * Check for DDI Time Method in the DDI document.
      *
      * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
-     * @return true if approved Time Method found, false otherwise
+     * @return "pass", "fail", or "indeterminate"
      */
-    private boolean checkTimeMethod(Document ddiDoc, String recordId) {
+    private Result checkTimeMethod(Document ddiDoc) {
         try {
             NodeList nodes;
             synchronized (timeMethodXPath) {
@@ -813,40 +932,49 @@ public class FairTests {
 
             if (nodes == null || nodes.getLength() == 0) {
                 logger.info("No Time Method elements found");
-                return false;
+                return Result.FAIL;
             }
 
-            Set<String> approvedTerms = getApprovedTimeMethodTerms();
-            for (int i = 0; i < nodes.getLength(); i++) {
-                String text = nodes.item(i).getTextContent().trim();
-                if (!text.isEmpty() && approvedTerms.contains(text)) {
-                    logger.log(Level.INFO, "Found DDI Time Method: {0}", text);
-                    return true;
+             Set<String> approvedTerms = getApprovedTimeMethodTerms();
+             logger.log(Level.INFO, "Approved Time Method terms: {0}", approvedTerms);
+            
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    // Get only the direct text content, excluding child elements
+                    StringBuilder description = new StringBuilder();
+                    Element timeMeth = (Element) nodes.item(i);
+                    for (Node child = timeMeth.getFirstChild(); child != null; child = child.getNextSibling()) {
+                        if (child.getNodeType() == Node.TEXT_NODE) {
+                            description.append(child.getTextContent());
+                        }
+                    }
+                    // Trim and check the description text
+                    String descriptionText = description.toString().trim();
+                    logger.log(Level.INFO, "Time Method description text: {0}", descriptionText);
+                    if (!descriptionText.isEmpty() && approvedTerms.contains(descriptionText)) {
+                        logger.log(Level.INFO, "Found Time Method term: {0}", descriptionText);
+                        return Result.PASS;
+                    }
                 }
-            }
-            logger.log(Level.INFO, "No approved Time Method found in record: {0}", recordId);
-            return false;
+
+            logger.log(Level.INFO, "No approved Time Method found in record");
+            return Result.FAIL;
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Time Method in record: {0}: {1}", new Object[]{recordId, e.getMessage()});
-            return false;
+            logger.log(Level.SEVERE, "Error checking Time Method {0}", e.getMessage());
+            return Result.INDETERMINATE;
         }
     }
-
 
     /**
      * Check for DDI Sampling Procedure in the DDI document.
      *
      * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
      * @return "pass", "fail", or "indeterminate"
      */
-    private Result checkDdiSamplingProcedure(Document ddiDoc, String recordId) {
+    private Result checkDdiSamplingProcedure(Document ddiDoc) {
         try {
             NodeList nodes;
             synchronized (samplingProcXPath) {
                 nodes = (NodeList) samplingProcXPath.evaluate(ddiDoc, XPathConstants.NODESET);
-            }
-
             if (nodes == null || nodes.getLength() == 0) {
                 logger.info("No Sampling Procedure terms found");
                 return Result.FAIL;
@@ -860,10 +988,11 @@ public class FairTests {
                     return Result.PASS;
                 }
             }
-            logger.log(Level.INFO, "No Sampling Procedure terms found in record: {0}", recordId);
+            logger.log(Level.INFO, "No Sampling Procedure terms found in record");
             return Result.FAIL;
+            }
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms", e);
+            logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -872,32 +1001,45 @@ public class FairTests {
      * Check for DDI Mode of Collection in the DDI document.
      *
      * @param ddiDoc   The DDI document
-     * @param recordId The record identifier (for logging)
-     * @return true if approved Mode of Collection found, false otherwise
+     * @return "pass", "fail", or "indeterminate"
      */
-    private boolean checkCollectionMode(Document ddiDoc, String recordId) {
+    private Result checkCollectionMode(Document ddiDoc) {
         try {
+            NodeList nodes;
             synchronized (collectionModeXPath) {
-                NodeList nodes = (NodeList) collectionModeXPath.evaluate(ddiDoc, XPathConstants.NODESET);
+                nodes = (NodeList) collectionModeXPath.evaluate(ddiDoc, XPathConstants.NODESET);
                 if (nodes == null || nodes.getLength() == 0) {
                     logger.info("No Mode of Collection elements found");
-                    return false;
+                    return Result.FAIL;
                 }
 
                 Set<String> approvedTerms = getApprovedCollectionModeTerms();
+                
                 for (int i = 0; i < nodes.getLength(); i++) {
-                    String text = nodes.item(i).getTextContent().trim();
-                    if (!text.isEmpty() && approvedTerms.contains(text)) {
-                        logger.log(Level.INFO, "Found DDI Mode of Collection: {0}", text);
-                        return true;
+                    Element collMode = (Element) nodes.item(i);
+
+                    // Get only the direct text content, excluding child elements
+                    StringBuilder description = new StringBuilder();
+                    for (Node child = collMode.getFirstChild(); child != null; child = child.getNextSibling()) {
+                        if (child.getNodeType() == Node.TEXT_NODE) {
+                            description.append(child.getTextContent());
+                        }
+                    }
+                    // Trim and check the description text
+                    String descriptionText = description.toString().trim();
+
+                    if (!descriptionText.isEmpty() && approvedTerms.contains(descriptionText)) {
+                        logger.log(Level.INFO, "Found Mode of Collection term: {0}", descriptionText);
+                        return Result.PASS;
                     }
                 }
-                logger.log(Level.INFO, "No approved Mode of Collection found in record: {0}", recordId);
-                return false;
+
+                logger.log(Level.INFO, "No approved Mode of Collection found in record");
+                return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
             logger.log(Level.SEVERE, "Error checking Mode of Collection", e);
-            return false;
+            return Result.INDETERMINATE;
         }
     }
 
@@ -938,7 +1080,7 @@ public class FairTests {
             return cachedAnalysisUnitTerms;
         }
 
-        logger.info("Fetching approved Analysis Unit terms from CESSDA vocabulary...");
+        logger.info("Fetching approved Analysis Unit terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(ANALYSIS_UNIT_VOCAB_URL, "AnalysisUnit");
             if (terms.isEmpty()) {
@@ -964,7 +1106,7 @@ public class FairTests {
             return cachedTimeMethodTerms;
         }
 
-        logger.info("Fetching approved Time Method terms from CESSDA vocabulary...");
+        logger.info("Fetching approved Time Method terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(TIME_METHOD_VOCAB_URL, "TimeMethod");
             if (terms.isEmpty()) {
@@ -990,7 +1132,7 @@ public class FairTests {
             return cachedSamplingProcTerms;
         }
 
-        logger.info("Fetching Sampling Procedure terms from CESSDA vocabulary...");
+        logger.info("Fetching Sampling Procedure terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(SAMPLING_PROC_VOCAB_URL, "SamplingProcedure");
             if (terms.isEmpty()) {
@@ -1017,7 +1159,7 @@ public class FairTests {
             return cachedCollectionModeTerms;
         }
 
-        logger.info("Fetching approved Mode of Collection terms from CESSDA vocabulary...");
+        logger.info("Fetching approved Mode of Collection terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(COLLECTION_MODE_VOCAB_URL, "ModeOfCollection");
             if (terms.isEmpty()) {
@@ -1034,9 +1176,12 @@ public class FairTests {
     }
 
     // ============================================================================
-    // SHARED VOCABULARY FETCHING
+    // SHARED RESOURCE METHODS
     // ============================================================================
 
+    /**
+     * Get HTTP response for the given request and body handler.
+     */
     private <T> HttpResponse<T> getHTTPResponse(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) throws IOException {
         HttpResponse<T> response;
         try {
@@ -1047,10 +1192,14 @@ public class FairTests {
         }
         return response;
     }
+
     // ============================================================================
-    // MAIN METHOD
+    // SHARED VOCABULARY FETCHING
     // ============================================================================
 
+    /**
+     * Fetch vocabulary terms from the given vocabulary URL.
+     */
     private Set<String> fetchVocabularyTerms(String vocabUrl, String vocabType) throws IOException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(vocabUrl))
@@ -1061,8 +1210,10 @@ public class FairTests {
 
         var response = getHTTPResponse(request, HttpResponse.BodyHandlers.ofInputStream());
 
+        // don't want an exception for 404 here, just return empty set
         if (response.statusCode() != 200) {
-            throw new IOException(vocabType + " vocabulary API returned " + response.statusCode());
+            logger.log(Level.WARNING, "Vocabulary API returned {0} for {1}", new Object[]{response.statusCode(), vocabType});
+            return Collections.emptySet();
         }
 
         JsonNode root = mapper.readTree(response.body());
@@ -1078,7 +1229,6 @@ public class FairTests {
                     String value = titleNode.path("title").asText(null);
                     if (value != null && !value.isBlank()) {
                         value = value.trim();
-                        logger.log(Level.INFO, "Found {0} entry: {1}", new String[]{vocabType, value});
                         terms.add(value);
                     }
                 }
@@ -1091,4 +1241,5 @@ public class FairTests {
 
         return terms;
     }
+
 }

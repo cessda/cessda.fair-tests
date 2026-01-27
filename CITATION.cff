@@ -10,11 +10,14 @@ authors:
     family-names: Shepherdson
     affiliation: CESSDA ERIC
     orcid: 'https://orcid.org/0000-0002-4402-9644'
+  - given-names: Matthew
+    family-names: Morris
+    affiliation: CESSDA ERIC
 identifiers:
   - type: doi
     value: 10.5281/zenodo.000000
     description: Placeholder DOI
-repository-code: 'https://github.com/cessda/cessda.fair.metadata-uses-cessda-access-rights.git'
+repository-code: 'https://github.com/cessda/cessda.fair-tests.git'
 abstract: >-
   This repository contains the source code for the CESSDA Community-specific FAIR
   Tests
