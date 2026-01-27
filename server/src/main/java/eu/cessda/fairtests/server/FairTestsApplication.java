@@ -17,32 +17,25 @@
 
 package eu.cessda.fairtests.server;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPathExpressionException;
-
+import eu.cessda.fairtests.FairTests;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import eu.cessda.fairtests.FairTests;
-
-@SpringBootApplication
 /**
  * Main class to start the Fair Tests application.
  */
+@SpringBootApplication
 public class FairTestsApplication {
     public static void main(String[] args) {
         SpringApplication.run(FairTestsApplication.class, args);
     }
 
-    @Bean
     /**
-     * Creates a FairTests bean. 
-     * @return
-     * @throws XPathExpressionException
-     * @throws ParserConfigurationException
+     * Creates a FairTests bean.
      */
-    public FairTests fairTests() throws XPathExpressionException, ParserConfigurationException {
+    @Bean
+    public FairTests fairTests() {
         return new FairTests();
     }
 }

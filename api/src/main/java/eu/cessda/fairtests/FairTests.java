@@ -17,38 +17,8 @@
 
 package eu.cessda.fairtests;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
@@ -59,26 +29,44 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.*;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * <H2>FairTests</H2>
- * <p>
+ * <P>
  * Consolidated utility class for checking DDI2.5 records against
  * various FAIR data criteria:
- * - Access Rights compliance
- * - Persistent Identifier (PID) schema validation
- * - ELSST controlled vocabulary keyword validation
- * - CESSDA Topic Classification vocabulary usage
- * - DDI Analysis Unit vocabulary usage
- * - DDI Collection Mode vocabulary usage
- * - DDI Time Method vocabulary usage
- * - DDI Sampling Procedure vocabulary usage
- * - Provenance information presence
- * <p>
- * All tests fetch DDI 2.5 metadata via the specified URL
- * <p>
+ * <UL>
+ * <LI>Access Rights compliance</LI>
+ * <LI>Persistent Identifier (PID) schema validation</LI>
+ * <LI>ELSST controlled vocabulary keyword validation</LI>
+ * <LI>CESSDA Topic Classification vocabulary usage</LI>
+ * <LI>DDI Analysis Unit vocabulary usage</LI>
+ * <LI>DDI Collection Mode vocabulary usage</LI>
+ * <LI>DDI Time Method vocabulary usage</LI>
+ * <LI>DDI Sampling Procedure vocabulary usage</LI>
+ * <LI>Provenance information presence</LI>
+ * </UL>
+ * <P>
+ * All tests fetch DDI 2.5 metadata via the specified URL.
+ * <P>
  * Return values for all tests:
  * <UL>
  * <LI>"pass": the record meets the criteria</LI>
@@ -159,15 +147,16 @@ public class FairTests {
     private final XPathExpression grantNoXPath;
 
     /**
-     * Constructor initialises shared components.
-     *
-     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
-     * @throws XPathExpressionException     if any constant XPaths cannot be compiled.
+     * Create a new instance of {@link FairTests}
      */
-    public FairTests() throws ParserConfigurationException, XPathExpressionException {
+    public FairTests() {
         var documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
-        this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        try {
+            this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        } catch (ParserConfigurationException e) {
+            throw new IllegalStateException(e);
+        }
 
         // Set XPath namespace context
         XPath xPath = XPathFactory.newInstance().newXPath();
@@ -186,20 +175,24 @@ public class FairTests {
         });
 
         // Compile XPaths
-        ddiCodebookXPath = xPath.compile("//ddi:codeBook");
-        // for DDI2.5 use conditions element as typeOfAccess is not available until DDI2.6 
-        accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:useStmt/ddi:conditions");
-        analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
-        collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
-        keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
-        pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
-        samplingProcXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc");
-        timeMethodXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth");
-        topicClassXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas");
-        // Provenance paths
-        publisherXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:distStmt/ddi:distrbtr");
-        authorXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:rspStmt/ddi:AuthEnty");
-        grantNoXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:prodStmt/ddi:grantNo");
+        try {
+            ddiCodebookXPath = xPath.compile("//ddi:codeBook");
+            // for DDI2.5 use conditions element as typeOfAccess is not available until DDI2.6
+            accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:useStmt/ddi:conditions");
+            analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
+            collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
+            keywordXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword");
+            pidXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:titlStmt/ddi:IDNo");
+            samplingProcXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc");
+            timeMethodXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth");
+            topicClassXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas");
+            // Provenance paths
+            publisherXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:distStmt/ddi:distrbtr");
+            authorXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:rspStmt/ddi:AuthEnty");
+            grantNoXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:prodStmt/ddi:grantNo");
+        } catch (XPathExpressionException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
@@ -216,13 +209,12 @@ public class FairTests {
     /**
      * Main method for command-line execution.
      *
-     * @param args args[0]: test type ("access-rights", "pid", "elsst-keywords", etc.)
+     * @param args args[0]: test type (e.g. "access-rights", "pid", "elsst-keywords", etc.)
      *             args[1]: A URL that should return DDI2.5 metadata
      * @throws ParseException               if the command line is invalid.
-     * @throws ParserConfigurationException if a {@link DocumentBuilder} cannot be created.
-     * @throws XPathExpressionException     if any constant XPaths cannot be compiled.
      */
-    public static void main(String[] args) throws ParseException, ParserConfigurationException, XPathExpressionException {
+    @SuppressWarnings("java:S106")
+    public static void main(String[] args) throws ParseException {
 
         // Set logger level
         logger.setLevel(Level.INFO);
@@ -238,12 +230,12 @@ public class FairTests {
             testMap.put(testType.testName(), testType);
         }
 
-        if (commandLine.getArgList().size() < 2 || !testMap.containsKey(commandLine.getArgList().getFirst())) {
+        if (commandLine.getArgList().size() < 2 || !testMap.containsKey(commandLine.getArgList().get(0))) {
             formatter.printHelp("FairTests <test-type> <url>\ntest types: " + getValidTestTypes(), null, options, null, false);
             System.exit(1);
         }
 
-        TestType test = testMap.get(commandLine.getArgList().getFirst());
+        TestType test = testMap.get(commandLine.getArgList().get(0));
         String url = commandLine.getArgList().get(1);
 
         // Instance tests
@@ -484,7 +476,7 @@ public class FairTests {
                 Node codeBookNode = (Node) ddiCodebookXPath.evaluate(oaiDoc, XPathConstants.NODE);
                 if (codeBookNode == null) {
                     logger.log(Level.WARNING, "No DDI codeBook found in OAI-PMH response from: {0}", url);
-                    throw new IllegalArgumentException("No DDI codeBook found");
+                    throw new IOException("Failed to extract DDI codeBook from OAI-PMH response: No DDI codeBook found");
                 } 
 
                 Document ddiDoc = documentBuilder.newDocument();
@@ -492,13 +484,7 @@ public class FairTests {
                 return ddiDoc;
             }
 
-        } catch (IllegalArgumentException e) {
-            throw new IOException("Failed to extract DDI codeBook from OAI-PMH response", e);
-        } catch (IOException e) {
-            throw new IOException("Failed to parse XML response", e);
-        } catch (XPathExpressionException e) {
-            throw new IOException("Failed to evaluate XPath expression", e);
-        } catch (SAXException e) {
+        } catch (IOException | SAXException | XPathExpressionException e) {
             throw new IOException("Failed to parse XML response", e);
         }
     }
@@ -527,26 +513,24 @@ public class FairTests {
                     logger.log(Level.INFO, "No Access Rights element found in DDI document");
                     return Result.FAIL;
                 }
-                
-                // make case insensitive comparison
-               for (int i = 0; i < nodes.getLength(); i++) {
-                   String val = nodes.item(i).getTextContent();
-                   logger.log(Level.INFO, "Raw value: [{0}]", val);
 
-                   String trimmedVal = val.trim();
-                   logger.log(Level.INFO, "Trimmed value: [{0}]", trimmedVal);
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    String val = nodes.item(i).getTextContent();
+                    logger.log(Level.INFO, "Raw value: [{0}]", val);
 
-                   // check if any approved value is contained within the trimmed value (substring match)
+                    String trimmedVal = val.trim().toLowerCase();
+                    logger.log(Level.INFO, "Trimmed value: [{0}]", trimmedVal);
+
+                    // check if any approved value is contained within the trimmed value (case-insensitive substring match)
                     boolean match = approvedValues.stream()
-                            .peek(approved -> logger.log(Level.INFO, "Comparing [{0}] with [{1}]",
-                                    new Object[] { trimmedVal, approved }))
-                            .anyMatch(approved -> trimmedVal.toLowerCase().contains(approved.toLowerCase()));
+                            .map(String::toLowerCase)
+                            .anyMatch(trimmedVal::contains);
 
-                           if (match) {
-                            logger.log(Level.INFO, "Approved Access Rights found: {0}", trimmedVal);
-                            return Result.PASS;
-                   }
-               }
+                    if (match) {
+                        logger.log(Level.INFO, "Approved Access Rights found: {0}", trimmedVal);
+                        return Result.PASS;
+                    }
+                }
 
                 logger.log(Level.INFO, "No approved Access Rights found in record");
                 return Result.FAIL;
@@ -666,16 +650,15 @@ public class FairTests {
             return cachedAccessRightsTerms;
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch AccessRights vocabulary: ", e.getMessage());
+            logger.log(Level.SEVERE, "Failed to fetch AccessRights vocabulary: {0}", e.getMessage());
             return defaultAccessRightsTerms();
         }
     }
 
     /**
-     * Validate ELSST keywords in the DDI document. 
-     * @param doc
-     * @return
+     * Validate ELSST keywords in the DDI document.
      */
+    @SuppressWarnings("java:S2259")
     private Result validateElsstKeywords(Document doc) {
         String languageCode = null;
         try {
@@ -718,13 +701,13 @@ public class FairTests {
             }
 
             if (candidates.isEmpty()) {
-                logger.info("No keywords found with both vocab='ELSST' and vocabURI containing 'elsst.cessda.eu' for language code: " + languageCode);
+                logger.log(Level.INFO, "No keywords found with both vocab='ELSST' and vocabURI containing 'elsst.cessda.eu' for language code: {0}", languageCode);
                 return Result.FAIL;
             }
 
             logger.log(Level.INFO, "Checking {0} candidate keyword(s) via ELSST API", candidates.size());
 
-            if (languageCode == null) {
+            if (languageCode.isEmpty()) {
                 logger.info("No language code available for ELSST API validation");
                 return Result.INDETERMINATE;
             }
@@ -760,7 +743,7 @@ public class FairTests {
             return cachedPidSchemas;
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch PID vocabulary", e.getMessage());
+            logger.log(Level.SEVERE, "Failed to fetch PID vocabulary: {0}", e.getMessage());
             return defaultPidSchemas();
         }
     }
@@ -800,11 +783,8 @@ public class FairTests {
     }
 
     /**
-     * Fetch ELSST keywords from the ELSST API for the given list of keywords and language code.    
-     * @param keywords
-     * @param langCode
-     * @return
-     * @throws IOException
+     * Fetch ELSST keywords from the ELSST API for the given list of keywords and language code.
+     * @return a set of ELSST keywords
      */
     private Set<String> fetchElsstKeywords(List<String> keywords, String langCode) throws IOException {
         if (!cachedElsstKeywords.isEmpty()) {
@@ -833,17 +813,17 @@ public class FairTests {
             }
 
             Set<String> keywordsToCache = new HashSet<>();
-                JsonNode results = mapper.readTree(response.body()).path("@graph");
-                for (JsonNode arrayNode : results) {  // Iterate outer array
-                    for (JsonNode topicNode : arrayNode) {  // Iterate inner array
-                        JsonNode labels = topicNode.path("labels");
-                        if (labels.isObject()) {
-                        labels.propertyStream().forEach(e -> 
-                        keywordsToCache.add(e.getKey() + ":\"" + e.getValue().asText() + "\"")
-            );
-                        }
+            JsonNode results = mapper.readTree(response.body()).path("@graph");
+            for (JsonNode arrayNode : results) {  // Iterate outer array
+                for (JsonNode topicNode : arrayNode) {  // Iterate inner array
+                    JsonNode labels = topicNode.path("labels");
+                    if (labels.isObject()) {
+                        labels.propertyStream().forEach(e ->
+                                keywordsToCache.add(e.getKey() + ":\"" + e.getValue().asText() + "\"")
+                        );
                     }
                 }
+            }
             cachedElsstKeywords.addAll(keywordsToCache);
         }
 
@@ -890,7 +870,7 @@ public class FairTests {
             logger.log(Level.INFO, "No approved Topic Classification found in record");
             return Result.FAIL;
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Topic Classification", e.getMessage());
+            logger.log(Level.SEVERE, "Error checking Topic Classification: {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -932,7 +912,7 @@ public class FairTests {
                 return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Analysis Unit", e.getMessage());
+            logger.log(Level.SEVERE, "Error checking Analysis Unit {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -979,7 +959,7 @@ public class FairTests {
             logger.log(Level.INFO, "No approved Time Method found in record");
             return Result.FAIL;
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking Time Method", e.getMessage());
+            logger.log(Level.SEVERE, "Error checking Time Method {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -1012,7 +992,7 @@ public class FairTests {
             return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
-            logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms", e.getMessage());
+            logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -1201,11 +1181,6 @@ public class FairTests {
 
     /**
      * Get HTTP response for the given request and body handler.
-     * @param <T>
-     * @param request
-     * @param bodyHandler
-     * @return
-     * @throws IOException
      */
     private <T> HttpResponse<T> getHTTPResponse(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) throws IOException {
         HttpResponse<T> response;
@@ -1224,10 +1199,6 @@ public class FairTests {
 
     /**
      * Fetch vocabulary terms from the given vocabulary URL.
-     * @param vocabUrl
-     * @param vocabType
-     * @return
-     * @throws IOException
      */
     private Set<String> fetchVocabularyTerms(String vocabUrl, String vocabType) throws IOException {
         HttpRequest request = HttpRequest.newBuilder()

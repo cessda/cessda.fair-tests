@@ -17,11 +17,11 @@
 
 package eu.cessda.fairtests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -31,72 +31,66 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class FairTestsTest {
 
-  private FairTests tests;
-  private HttpClient mockClient;
-  private HttpResponse<byte[]> mockByteResponse;
-  private HttpResponse<InputStream> mockStringResponse;
-  private MockedStatic<FairTests> logMock;
+    private FairTests tests;
+    private HttpClient mockClient;
+    private HttpResponse<InputStream> mockStringResponse;
+    private MockedStatic<FairTests> logMock;
 
-  @SuppressWarnings("unchecked")
-  @BeforeEach
-  void setup() throws Exception {
-    tests = new FairTests();
+    @SuppressWarnings("unchecked")
+    @BeforeEach
+    void setup() throws Exception {
+        tests = new FairTests();
 
-    mockClient = mock(HttpClient.class);
-    mockByteResponse = mock(HttpResponse.class);
-    HttpResponse<byte[]> byteResponse = (HttpResponse<byte[]>) (Object) mockByteResponse;
-    mockByteResponse = byteResponse;
-    mockStringResponse = mock(HttpResponse.class);
+        mockClient = mock(HttpClient.class);
+        mockStringResponse = mock(HttpResponse.class);
 
-    // Replace private httpClient
-    Field httpClientField = FairTests.class.getDeclaredField("httpClient");
-    httpClientField.setAccessible(true);
-    httpClientField.set(tests, mockClient);
+        // Replace private httpClient
+        Field httpClientField = FairTests.class.getDeclaredField("httpClient");
+        httpClientField.setAccessible(true);
+        httpClientField.set(tests, mockClient);
 
-    // Mock logger static calls so they do not print
-    logMock = mockStatic(FairTests.class);
-  }
+        // Mock logger static calls so they do not print
+        logMock = mockStatic(FairTests.class);
+    }
 
-  @AfterEach
-  void teardown() {
-    logMock.close();
-  }
+    @AfterEach
+    void teardown() {
+        logMock.close();
+    }
 
-  // =============================
-  // Test XML helpers
-  // =============================
+    // =============================
+    // Test XML helpers
+    // =============================
 
-  @SuppressWarnings("unchecked")
-  private void mockXmlResponse(String xml) throws Exception {
-    when(mockClient.send(
-        any(HttpRequest.class),
-        any(HttpResponse.BodyHandler.class)))
-        .thenReturn(mockStringResponse);
+    @SuppressWarnings("unchecked")
+    private void mockXmlResponse(String xml) throws Exception {
+        when(mockClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                .thenReturn(mockStringResponse);
 
-    when(mockStringResponse.statusCode()).thenReturn(200);
-    when(mockStringResponse.body()).thenReturn(
-        new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
-  }
+        when(mockStringResponse.statusCode()).thenReturn(200);
+        when(mockStringResponse.body()).thenReturn(
+                new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+    }
 
-  // =============================
-  // Access Rights
-  // =============================
-  @Nested
-  class AccessRightsTests {
+    // =============================
+    // Access Rights
+    // =============================
+    @Nested
+    class AccessRightsTests {
 
-    @Test
-    void passesWhenApprovedTermFound() throws Exception {
-      tests.cachedAccessRightsTerms.add("open");
+        @Test
+        void passesWhenApprovedTermFound() throws Exception {
+            tests.cachedAccessRightsTerms.add("open");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -106,15 +100,15 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsApprovedAccessRights("http://x/detail/ID123");
-      assertEquals(Result.FAIL, result);
-    }
+            Result result = tests.containsApprovedAccessRights("http://x/detail/ID123");
+            assertEquals(Result.FAIL, result);
+        }
 
-    @Test
-    void failsWhenTermNotFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void failsWhenTermNotFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -124,26 +118,26 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsApprovedAccessRights("http://x/detail/ID999");
-      assertEquals(Result.FAIL, result);
+            Result result = tests.containsApprovedAccessRights("http://x/detail/ID999");
+            assertEquals(Result.FAIL, result);
+        }
     }
-  }
 
-  // =============================
-  // PID Tests
-  // =============================
-  @Nested
-  class PidTests {
+    // =============================
+    // PID Tests
+    // =============================
+    @Nested
+    class PidTests {
 
-    @Test
-    void passesWhenApprovedPidFound() throws Exception {
+        @Test
+        void passesWhenApprovedPidFound() throws Exception {
 
-      // Mock vocabulary
-      tests.cachedPidSchemas.add("DOI");
+            // Mock vocabulary
+            tests.cachedPidSchemas.add("DOI");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -155,18 +149,18 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result r = tests.containsApprovedPid("http://x/detail/P1");
-      assertEquals(Result.PASS, r);
-    }
+            Result r = tests.containsApprovedPid("http://x/detail/P1");
+            assertEquals(Result.PASS, r);
+        }
 
-    @Test
-    void failsWhenPidNotApproved() throws Exception {
+        @Test
+        void failsWhenPidNotApproved() throws Exception {
 
-      tests.cachedPidSchemas.add("DOI");
+            tests.cachedPidSchemas.add("DOI");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -178,23 +172,23 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL, tests.containsApprovedPid("http://x/detail/P2"));
+            assertEquals(Result.FAIL, tests.containsApprovedPid("http://x/detail/P2"));
+        }
     }
-  }
 
-  // =============================
-  // Topic Classification
-  // =============================
-  @Nested
-  class TopicClassificationTests {
+    // =============================
+    // Topic Classification
+    // =============================
+    @Nested
+    class TopicClassificationTests {
 
-    @Test
-    void passesWhenTermMatchesVocabulary() throws Exception {
-      tests.cachedTopicClassTerms.add("Socioeconomics");
+        @Test
+        void passesWhenTermMatchesVocabulary() throws Exception {
+            tests.cachedTopicClassTerms.add("Socioeconomics");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -206,16 +200,16 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.PASS, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1"));
-    }
+            assertEquals(Result.PASS, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1"));
+        }
 
-    @Test
-    void failsWhenTermNotApproved() throws Exception {
-      tests.cachedTopicClassTerms.add("Approved");
+        @Test
+        void failsWhenTermNotApproved() throws Exception {
+            tests.cachedTopicClassTerms.add("Approved");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -227,23 +221,23 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
+            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
+        }
     }
-  }
 
-  // =============================
-  // Recommended DDI Vocabs
-  // =============================
-  @Nested
-  class VocabularyTests {
+    // =============================
+    // Recommended DDI Vocabs
+    // =============================
+    @Nested
+    class VocabularyTests {
 
-    @Test
-    void passesWhenAnyRecommendedVocabFound() throws Exception {
-      tests.cachedAnalysisUnitTerms.add("Individual");
+        @Test
+        void passesWhenAnyRecommendedVocabFound() throws Exception {
+            tests.cachedAnalysisUnitTerms.add("Individual");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -255,39 +249,39 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.PASS, tests.containsDdiAnalysisUnit("http://x/detail/DDI1"));
-    }
+            assertEquals(Result.PASS, tests.containsDdiAnalysisUnit("http://x/detail/DDI1"));
+        }
 
-    @Test
-    void failsWhenNoneFound() throws Exception {
-      tests.cachedAnalysisUnitTerms.add("X");
+        @Test
+        void failsWhenNoneFound() throws Exception {
+            tests.cachedAnalysisUnitTerms.add("X");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:stdyInfo>
                   <ddi:sumDscr><ddi:anlyUnit>Y</ddi:anlyUnit></ddi:sumDscr>
                 </ddi:stdyInfo></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL, tests.containsDdiAnalysisUnit("http://x/detail/DDI2"));
+            assertEquals(Result.FAIL, tests.containsDdiAnalysisUnit("http://x/detail/DDI2"));
+        }
     }
-  }
 
-  // =============================
-  // ELSST Keywords
-  // =============================
-  @Nested
-  class ElsstKeywordTests {
+    // =============================
+    // ELSST Keywords
+    // =============================
+    @Nested
+    class ElsstKeywordTests {
 
-    @Test
-    void passesWhenElsstKeywordFound() throws Exception {
+        @Test
+        void passesWhenElsstKeywordFound() throws Exception {
 
-      tests.cachedElsstKeywords.add("Unemployment");
+            tests.cachedElsstKeywords.add("Unemployment");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -303,16 +297,16 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL,
-          tests.containsElsstKeywords("http://x/detail/E1"));
-    }
+            assertEquals(Result.FAIL,
+                    tests.containsElsstKeywords("http://x/detail/E1"));
+        }
 
-    @Test
-    void failsWhenNoElsstKeywordsPresent() throws Exception {
+        @Test
+        void failsWhenNoElsstKeywordsPresent() throws Exception {
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -324,25 +318,25 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL,
-          tests.containsElsstKeywords("http://x/detail/E2"));
+            assertEquals(Result.FAIL,
+                    tests.containsElsstKeywords("http://x/detail/E2"));
+        }
     }
-  }
 
-  // =============================
-  // Mode of Collection
-  // =============================
-  @Nested
-  class CollectionModeTests {
+    // =============================
+    // Mode of Collection
+    // =============================
+    @Nested
+    class CollectionModeTests {
 
-    @Test
-    void passesWhenApprovedCollectionModeFound() throws Exception {
+        @Test
+        void passesWhenApprovedCollectionModeFound() throws Exception {
 
-      tests.cachedCollectionModeTerms.add("Face-to-face interview");
+            tests.cachedCollectionModeTerms.add("Face-to-face interview");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -354,18 +348,17 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.PASS,
-          tests.containsDdiCollectionMode("http://x/detail/CM1"));
-    }
+            assertEquals(Result.PASS, tests.containsDdiCollectionMode("http://x/detail/CM1"));
+        }
 
-    @Test
-    void failsWhenCollectionModeNotApproved() throws Exception {
+        @Test
+        void failsWhenCollectionModeNotApproved() throws Exception {
 
-      tests.cachedCollectionModeTerms.add("Approved");
+            tests.cachedCollectionModeTerms.add("Approved");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -377,25 +370,24 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL,
-          tests.containsDdiCollectionMode("http://x/detail/CM2"));
+            assertEquals(Result.FAIL, tests.containsDdiCollectionMode("http://x/detail/CM2"));
+        }
     }
-  }
 
-  // =============================
-  // Time Method
-  // =============================
-  @Nested
-  class TimeMethodTests {
+    // =============================
+    // Time Method
+    // =============================
+    @Nested
+    class TimeMethodTests {
 
-    @Test
-    void passesWhenApprovedTimeMethodFound() throws Exception {
+        @Test
+        void passesWhenApprovedTimeMethodFound() throws Exception {
 
-      tests.cachedTimeMethodTerms.add("Longitudinal");
+            tests.cachedTimeMethodTerms.add("Longitudinal");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -407,18 +399,17 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.PASS,
-          tests.containsDdiTimeMethod("http://x/detail/TM1"));
-    }
+            assertEquals(Result.PASS, tests.containsDdiTimeMethod("http://x/detail/TM1"));
+        }
 
-    @Test
-    void failsWhenTimeMethodNotApproved() throws Exception {
+        @Test
+        void failsWhenTimeMethodNotApproved() throws Exception {
 
-      tests.cachedTimeMethodTerms.add("Approved");
+            tests.cachedTimeMethodTerms.add("Approved");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
                   <ddi:stdyDscr>
@@ -430,61 +421,60 @@ class FairTestsTest {
                   </ddi:stdyDscr>
                 </ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL,
-          tests.containsDdiTimeMethod("http://x/detail/TM2"));
+            assertEquals(Result.FAIL, tests.containsDdiTimeMethod("http://x/detail/TM2"));
+        }
     }
-  }
 
-  // =============================
-  // Sampling Procedure
-  // =============================
-  @Nested
-  class SamplingProcedureTests {
+    // =============================
+    // Sampling Procedure
+    // =============================
+    @Nested
+    class SamplingProcedureTests {
 
-    @Test
-    void passesWhenTermMatchesVocabulary() throws Exception {
+        @Test
+        void passesWhenTermMatchesVocabulary() throws Exception {
 
-      tests.cachedSamplingProcTerms.add("Quota Sampling");
+            tests.cachedSamplingProcTerms.add("Quota Sampling");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
                   <ddi:sampProc>Quota Sampling</ddi:sampProc>
                 </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
-      assertEquals(Result.PASS, result);
-    }
+            Result result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
+            assertEquals(Result.PASS, result);
+        }
 
-    @Test
-    void failsWhenNotFound() throws Exception {
-      tests.cachedSamplingProcTerms.add("A");
+        @Test
+        void failsWhenNotFound() throws Exception {
+            tests.cachedSamplingProcTerms.add("A");
 
-      mockXmlResponse("""
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
                   <ddi:sampProc>B</ddi:sampProc>
                 </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
+            assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
+        }
     }
-  }
 
-  // =============================
-  // Provenance
-  // =============================
-  @Nested
-  class ProvenanceTests {
+    // =============================
+    // Provenance
+    // =============================
+    @Nested
+    class ProvenanceTests {
 
-    @Test
-    void passesWhenDistributorFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void passesWhenDistributorFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:distStmt>
@@ -492,15 +482,15 @@ class FairTestsTest {
                   </ddi:distStmt>
                 </ddi:citation></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P1");
-      assertEquals(Result.PASS, result);
-    }
+            Result result = tests.containsProvenanceInformation("http://x/detail/P1");
+            assertEquals(Result.PASS, result);
+        }
 
-    @Test
-    void passesWhenAuthEntyFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void passesWhenAuthEntyFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:rspStmt>
@@ -510,13 +500,13 @@ class FairTestsTest {
               </OAI-PMH>
           """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P2");
-      assertEquals(Result.PASS, result);
-    }
+            Result result = tests.containsProvenanceInformation("http://x/detail/P2");
+            assertEquals(Result.PASS, result);
+        }
 
-    @Test
-    void passesWhenGrantNoFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void passesWhenGrantNoFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:prodStmt>
@@ -524,15 +514,15 @@ class FairTestsTest {
                   </ddi:prodStmt>
                 </ddi:citation></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P3");
-      assertEquals(Result.PASS, result);
-    }
+            Result result = tests.containsProvenanceInformation("http://x/detail/P3");
+            assertEquals(Result.PASS, result);
+        }
 
-    @Test
-    void passesWhenMultipleElementsFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void passesWhenMultipleElementsFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:distStmt>
@@ -546,15 +536,15 @@ class FairTestsTest {
                   </ddi:prodStmt>
                 </ddi:citation></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P4");
-      assertEquals(Result.PASS, result);
-    }
+            Result result = tests.containsProvenanceInformation("http://x/detail/P4");
+            assertEquals(Result.PASS, result);
+        }
 
-    @Test
-    void failsWhenNoneFound() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void failsWhenNoneFound() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:titlStmt>
@@ -562,15 +552,15 @@ class FairTestsTest {
                   </ddi:titlStmt>
                 </ddi:citation></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P5");
-      assertEquals(Result.FAIL, result);
-    }
+            Result result = tests.containsProvenanceInformation("http://x/detail/P5");
+            assertEquals(Result.FAIL, result);
+        }
 
-    @Test
-    void failsWhenElementsAreEmpty() throws Exception {
-      mockXmlResponse("""
+        @Test
+        void failsWhenElementsAreEmpty() throws Exception {
+            mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook><ddi:stdyDscr><ddi:citation>
                   <ddi:distStmt>
@@ -584,10 +574,10 @@ class FairTestsTest {
                   </ddi:prodStmt>
                 </ddi:citation></ddi:stdyDscr></ddi:codeBook>
               </OAI-PMH>
-          """);
+                    """);
 
-      Result result = tests.containsProvenanceInformation("http://x/detail/P6");
-      assertEquals(Result.PASS, result);
+            Result result = tests.containsProvenanceInformation("http://x/detail/P6");
+            assertEquals(Result.PASS, result);
+        }
     }
-  }
 }

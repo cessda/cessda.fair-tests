@@ -17,21 +17,16 @@
 
 package eu.cessda.fairtests.server;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
+import org.springframework.web.bind.annotation.*;
 
-@RestController
-@RequestMapping("api")
 /**
  * REST controller for FAIR tests.
  */
+@RestController
+@RequestMapping("api")
 public class FairTestsController {
     private final FairTests fairTests;
 
@@ -43,13 +38,14 @@ public class FairTestsController {
         this.fairTests = fairTests;
     }
 
-    @GetMapping(path = "{test}")
     /**
-     * Runs the specified FAIR test on the given URL. 
-     * @param test 
-     * @param url  
-     * @return
+     * Runs the specified FAIR test on the given URL.
+     *
+     * @param test the test to run.
+     * @param url  the URL to test.
+     * @return the results.
      */
+    @GetMapping(path = "{test}")
     public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") String url) {
         return fairTests.runTest(test, url);
     }

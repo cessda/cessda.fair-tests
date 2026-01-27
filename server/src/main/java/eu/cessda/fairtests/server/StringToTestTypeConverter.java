@@ -17,19 +17,18 @@
 
 package eu.cessda.fairtests.server;
 
+import eu.cessda.fairtests.TestType;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
+
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.stereotype.Component;
-
-import eu.cessda.fairtests.TestType;
-
-@Component
 /**
  * Converter to convert String to TestType.
  */
+@Component
 public class StringToTestTypeConverter implements Converter<String, TestType> {
     private final Map<String, TestType> testMap;
 

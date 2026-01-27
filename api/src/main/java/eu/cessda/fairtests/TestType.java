@@ -22,37 +22,41 @@ package eu.cessda.fairtests;
  */
 public enum TestType {
     // A – Accessible
-    // Checks whether records contain approved Access Rights terms
+    /**
+     * Checks whether records contain approved Access Rights terms
+     */
     ACCESS_RIGHTS("access-rights"),
 
     // F – Findable
-    // Checks whether records contain a Persistent Identifier
+    /**
+     * Checks whether records contain a Persistent Identifier
+     */
     PID("pid"),
 
     // I – Interoperable
-    // Checks whether records contain ELSST keywords
+    /** Checks whether records contain ELSST keywords */
     ELSST_KEYWORDS("elsst-keywords"),
-    // Checks whether records contain DDI topic classifications
+    /** Checks whether records contain DDI topic classifications */
     TOPIC_CLASS("topic-class"),
 
     // R – Reusable
-    // Checks whether records contain approved DDI terms for various fields
+    /** Checks whether records contain approved DDI terms for various fields */
     DDI_ANALYSIS_UNIT("ddi-analysis-unit"),
-    // Checks whether records contain approved DDI terms for various fields
+    /** Checks whether records contain approved DDI terms for various fields */
     DDI_COLLECTION_MODE("ddi-collection-mode"),
-    // Checks whether records contain approved DDI terms for various fields
+    /** Checks whether records contain approved DDI terms for various fields */
     DDI_TIME_METHOD("ddi-time-method"),
-    // Checks whether records contain approved DDI terms for various fields
+    /** Checks whether records contain approved DDI terms for various fields */
     DDI_SAMPLEPROC("ddi-sampleproc"),
-    // Checks whether records contain provenance information
+    /** Checks whether records contain provenance information */
     PROVENANCE ("provenance");
 
-    // Field to hold the test name
+    /** The name of the test, used for the REST API and CLI */
     private final String name;
 
     /**
-     * Constructor for TestType enum.
-     * @param name the name of the test type
+     * Constructs a TestType with a given test name.
+     * @param name the test name as used by the REST API and the CLI
      */
     TestType(String name) {
         this.name = name;
@@ -60,7 +64,6 @@ public enum TestType {
 
     /**
      * Gets the test name.
-     * @return the test name
      */
     public String testName() {
         return name;
