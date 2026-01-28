@@ -26,6 +26,7 @@ import org.mockito.MockedStatic;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -102,7 +103,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsApprovedAccessRights("http://x/detail/ID123");
+            Result result = tests.containsApprovedAccessRights(URI.create("http://x/detail/ID123"));
             assertEquals(Result.FAIL, result);
         }
 
@@ -120,7 +121,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsApprovedAccessRights("http://x/detail/ID999");
+            Result result = tests.containsApprovedAccessRights(URI.create("http://x/detail/ID999"));
             assertEquals(Result.FAIL, result);
         }
     }
@@ -151,7 +152,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result r = tests.containsApprovedPid("http://x/detail/P1");
+            Result r = tests.containsApprovedPid(URI.create("http://x/detail/P1"));
             assertEquals(Result.PASS, r);
         }
 
@@ -174,7 +175,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsApprovedPid("http://x/detail/P2"));
+            assertEquals(Result.FAIL, tests.containsApprovedPid(URI.create("http://x/detail/P2")));
         }
     }
 
@@ -202,7 +203,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.PASS, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC1"));
+            assertEquals(Result.PASS, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC1")));
         }
 
         @Test
@@ -223,7 +224,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms("http://x/detail/TC2"));
+            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC2")));
         }
     }
 
@@ -251,7 +252,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.PASS, tests.containsDdiAnalysisUnit("http://x/detail/DDI1"));
+            assertEquals(Result.PASS, tests.containsDdiAnalysisUnit(URI.create("http://x/detail/DDI1")));
         }
 
         @Test
@@ -266,7 +267,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiAnalysisUnit("http://x/detail/DDI2"));
+            assertEquals(Result.FAIL, tests.containsDdiAnalysisUnit(URI.create("http://x/detail/DDI2")));
         }
     }
 
@@ -299,8 +300,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL,
-                    tests.containsElsstKeywords("http://x/detail/E1"));
+            assertEquals(Result.FAIL, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
         }
 
         @Test
@@ -320,8 +320,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL,
-                    tests.containsElsstKeywords("http://x/detail/E2"));
+            assertEquals(Result.FAIL, tests.containsElsstKeywords(URI.create("http://x/detail/E2")));
         }
     }
 
@@ -350,7 +349,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.PASS, tests.containsDdiCollectionMode("http://x/detail/CM1"));
+            assertEquals(Result.PASS, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM1")));
         }
 
         @Test
@@ -372,7 +371,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiCollectionMode("http://x/detail/CM2"));
+            assertEquals(Result.FAIL, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM2")));
         }
     }
 
@@ -401,7 +400,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.PASS, tests.containsDdiTimeMethod("http://x/detail/TM1"));
+            assertEquals(Result.PASS, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM1")));
         }
 
         @Test
@@ -423,7 +422,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiTimeMethod("http://x/detail/TM2"));
+            assertEquals(Result.FAIL, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM2")));
         }
     }
 
@@ -446,7 +445,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsDdiSamplingProcedureTerms("http://x/detail/SP1");
+            Result result = tests.containsDdiSamplingProcedureTerms(URI.create("http://x/detail/SP1"));
             assertEquals(Result.PASS, result);
         }
 
@@ -462,7 +461,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms("http://x/detail/SP2"));
+            assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms(URI.create("http://x/detail/SP2")));
         }
     }
 
@@ -484,7 +483,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P1");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P1"));
             assertEquals(Result.PASS, result);
         }
 
@@ -500,7 +499,7 @@ class FairTestsTest {
               </OAI-PMH>
           """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P2");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P2"));
             assertEquals(Result.PASS, result);
         }
 
@@ -516,7 +515,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P3");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P3"));
             assertEquals(Result.PASS, result);
         }
 
@@ -538,7 +537,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P4");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P4"));
             assertEquals(Result.PASS, result);
         }
 
@@ -554,7 +553,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P5");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P5"));
             assertEquals(Result.FAIL, result);
         }
 
@@ -576,7 +575,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            Result result = tests.containsProvenanceInformation("http://x/detail/P6");
+            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P6"));
             assertEquals(Result.PASS, result);
         }
     }
