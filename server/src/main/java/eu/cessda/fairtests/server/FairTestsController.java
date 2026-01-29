@@ -22,6 +22,8 @@ import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+
 /**
  * REST controller for FAIR tests.
  */
@@ -46,7 +48,7 @@ public class FairTestsController {
      * @return the results.
      */
     @GetMapping(path = "{test}")
-    public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") String url) {
+    public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") URI url) {
         return fairTests.runTest(test, url);
     }
 }

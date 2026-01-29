@@ -36,6 +36,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.*;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -214,7 +215,7 @@ public class FairTests {
      * @throws ParseException               if the command line is invalid.
      */
     @SuppressWarnings("java:S106")
-    public static void main(String[] args) throws ParseException {
+    public static void main(String[] args) throws ParseException, URISyntaxException {
 
         // Set logger level
         logger.setLevel(Level.INFO);
@@ -235,8 +236,11 @@ public class FairTests {
             System.exit(1);
         }
 
-        TestType test = testMap.get(commandLine.getArgList().get(0));
-        String url = commandLine.getArgList().get(1);
+        String testName = commandLine.getArgList().get(0);
+        TestType test = testMap.get(testName);
+
+        String urlString = commandLine.getArgList().get(1);
+        URI url = new URI(urlString);
 
         // Instance tests
         FairTests tests = new FairTests();
@@ -276,7 +280,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return Result of the test: "pass", "fail", or "indeterminate"
      */
-    public Result runTest(TestType test, String url) {
+    public Result runTest(TestType test, URI url) {
         return switch (test) {
             case ACCESS_RIGHTS -> containsApprovedAccessRights(url);
             case PID -> containsApprovedPid(url);
@@ -287,7 +291,6 @@ public class FairTests {
             case DDI_TIME_METHOD -> containsDdiTimeMethod(url);
             case DDI_SAMPLEPROC -> containsDdiSamplingProcedureTerms(url);
             case PROVENANCE -> containsProvenanceInformation(url);
-            default -> Result.INDETERMINATE;
         };
     }
 
@@ -297,7 +300,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsApprovedAccessRights(String url) {
+    public Result containsApprovedAccessRights(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkAccessRights(doc);
@@ -314,7 +317,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsApprovedPid(String url) {
+    public Result containsApprovedPid(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkPidSchemas(doc);
@@ -335,7 +338,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsElsstKeywords(String url) {
+    public Result containsElsstKeywords(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return validateElsstKeywords(doc);
@@ -353,7 +356,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsCessdaTopicClassificationTerms(String url) {
+    public Result containsCessdaTopicClassificationTerms(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkCessdaTopicClassification(doc);
@@ -369,7 +372,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsDdiAnalysisUnit(String url) {
+    public Result containsDdiAnalysisUnit(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkAnalysisUnit(doc);
@@ -385,7 +388,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsDdiCollectionMode(String url) {
+    public Result containsDdiCollectionMode(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkCollectionMode(doc);
@@ -401,7 +404,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsDdiTimeMethod(String url) {
+     public Result containsDdiTimeMethod(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkTimeMethod(doc);
@@ -417,7 +420,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsDdiSamplingProcedureTerms(String url) {
+    public Result containsDdiSamplingProcedureTerms(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkDdiSamplingProcedure(doc);
@@ -434,7 +437,7 @@ public class FairTests {
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-    public Result containsProvenanceInformation(String url) {
+    public Result containsProvenanceInformation(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkProvenance(doc);
@@ -451,9 +454,9 @@ public class FairTests {
      * @return The DDI codeBook Document
      * @throws IOException - if an I/O error occurs
      */
-    public Document fetchAndParseDocument(String url) throws IOException {
+    public Document fetchAndParseDocument(URI url) throws IOException {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(url)
                 .header(HTTP_HEADER_ACCEPT, "application/xml, text/xml, */*")
                 .timeout(Duration.ofSeconds(30))
                 .GET()
