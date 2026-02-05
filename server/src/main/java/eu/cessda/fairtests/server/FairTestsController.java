@@ -69,27 +69,29 @@ public class FairTestsController {
      * @param filename the name of the Turtle file (without the .ttl extension)
      * @return the Turtle file as a ResponseEntity<Resource>
      */
-    @GetMapping("{filename}.ttl")
+    @GetMapping(path = "{filename:**}.ttl", produces = "text/turtle")
     public ResponseEntity<Resource> serveTurtleFile(@PathVariable String filename) {
+        // Validate filename to prevent path traversal
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            return ResponseEntity.badRequest().build();
+        }
+
         try {
-            // Validate filename to prevent path traversal
-            if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
-                return ResponseEntity.badRequest().build();
-            }
             // Load the file from resources/static
             Resource resource = new ClassPathResource("static/" + filename + ".ttl");
 
+            // Check if the file exists
             if (!resource.exists()) {
                 return ResponseEntity.notFound().build();
             }
-
-            // Set appropriate content type for Turtle files
+             // Return the file with appropriate headers
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("text/turtle"))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "inline; filename=\"" + filename + ".ttl\"")
                     .body(resource);
 
+        // Catch any unexpected exceptions and return a 500 Internal Server Error
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
