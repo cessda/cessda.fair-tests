@@ -70,7 +70,7 @@ public class FairTestsController {
      * @return the Turtle file as a ResponseEntity<Resource>
      */
     @GetMapping(path = "{filename:**}.ttl", produces = "text/turtle")
-    public ResponseEntity<Resource> serveTurtleFile(@PathVariable String filename) {
+    public ResponseEntity<Resource> serveTurtleFile(@PathVariable("filename") String filename) {
         // Validate filename to prevent path traversal
         if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
             return ResponseEntity.badRequest().build();
