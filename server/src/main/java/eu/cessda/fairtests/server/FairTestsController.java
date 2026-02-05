@@ -17,12 +17,22 @@
 
 package eu.cessda.fairtests.server;
 
+import java.net.URI;
+
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
-import org.springframework.web.bind.annotation.*;
-
-import java.net.URI;
 
 /**
  * REST controller for FAIR tests.
@@ -34,6 +44,7 @@ public class FairTestsController {
 
     /**
      * Constructor for FairTestsController.
+     * 
      * @param fairTests the FairTests service
      */
     public FairTestsController(FairTests fairTests) {
@@ -50,5 +61,37 @@ public class FairTestsController {
     @GetMapping(path = "{test}")
     public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") URI url) {
         return fairTests.runTest(test, url);
+    }
+
+    /**
+     * Serves a Turtle file from the resources/static directory.
+     * 
+     * @param filename the name of the Turtle file (without the .ttl extension)
+     * @return the Turtle file as a ResponseEntity<Resource>
+     */
+    @GetMapping("{filename}.ttl")
+    public ResponseEntity<Resource> serveTurtleFile(@PathVariable String filename) {
+        try {
+            // Validate filename to prevent path traversal
+            if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+                return ResponseEntity.badRequest().build();
+            }
+            // Load the file from resources/static
+            Resource resource = new ClassPathResource("static/" + filename + ".ttl");
+
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Set appropriate content type for Turtle files
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("text/turtle"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + filename + ".ttl\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
