@@ -52,24 +52,12 @@ public class FairTestsController {
     }
 
     /**
-     * Runs the specified FAIR test on the given URL.
-     *
-     * @param test the test to run.
-     * @param url  the URL to test.
-     * @return the results.
-     */
-    @GetMapping(path = "{test}")
-    public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") URI url) {
-        return fairTests.runTest(test, url);
-    }
-
-    /**
      * Serves a Turtle file from the resources/static directory.
      * 
      * @param filename the name of the Turtle file (without the .ttl extension)
      * @return the Turtle file as a ResponseEntity<Resource>
      */
-    @GetMapping(path = "{filename:**}.ttl", produces = "text/turtle")
+    @GetMapping(path = "{filename}.ttl", produces = "text/turtle")
     public ResponseEntity<Resource> serveTurtleFile(@PathVariable("filename") String filename) {
         // Validate filename to prevent path traversal
         if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
@@ -95,5 +83,17 @@ public class FairTestsController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+     /**
+     * Runs the specified FAIR test on the given URL.
+     *
+     * @param test the test to run.
+     * @param url  the URL to test.
+     * @return the results.
+     */
+    @GetMapping(path = "{test}")
+    public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") URI url) {
+        return fairTests.runTest(test, url);
     }
 }
