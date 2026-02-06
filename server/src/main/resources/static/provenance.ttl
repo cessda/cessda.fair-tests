@@ -1,9 +1,9 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.0"
+  version: "1.0.1"
   title: "Metadata Contains CESSDA Provenance Information"
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.XXX"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.4e4752"
   description: >-
     "Checks if certain elements containing provenance information (Creator, Funder and Publisher) appear in the metadata."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.3e9860"

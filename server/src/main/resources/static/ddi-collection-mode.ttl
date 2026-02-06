@@ -1,9 +1,9 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.0"
+  version: "1.0.1"
   title: "Metadata Uses DDI Mode Of Collection Vocabulary"
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.XXX"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.71b621"
   description: >-
     "Checks if certain information elements contain terms from the DDI Mode of Collection controlled vocabulary."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.96d4af"

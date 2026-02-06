@@ -1,9 +1,9 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.0"
+  version: "1.0.1"
   title: "Metadata Uses CESSDA ELSST Keywords"
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.xxx"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.022caa"
   description: >-
     "Checks whether keywords used in the metadata belong to the ELSST controlled vocabulary."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.96d4af"

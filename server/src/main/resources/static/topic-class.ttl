@@ -1,9 +1,9 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.0"
+  version: "1.0.1"
   title: "Metadata Uses CESSDA Topic Vocabulary"
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.XXX"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.195ab2"
   description: >-
     "Checks if certain information elements contain terms from the CESSDA Topic controlled vocabulary."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.96d4af"

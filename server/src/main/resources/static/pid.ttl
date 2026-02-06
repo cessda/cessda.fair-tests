@@ -1,9 +1,9 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.0"
+  version: "1.0.1"
   title: "Identifiers use ARK, DOI, HANDLE or URN PID schemas -  FM_F1-PID_M_CESSDA"
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.VRo9Dl"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.bc9dde"
   description: >-
     "Metric tests a metadata record for the presence of an implemented id schema (CESSDA requires the use of ARK, DOI, HANDLE or URN PID schemas)."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.e226cb"
