@@ -17,6 +17,8 @@
 
 package eu.cessda.fairtests;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Result of the FAIR test
  */
@@ -32,5 +34,17 @@ public enum Result {
     /**
      * Test encountered an error
      */
-    INDETERMINATE
+    INDETERMINATE;
+
+    @JsonValue
+    /* Method to return the enum value as a lowercase string for JSON serialisation */
+    public String toLowerCase() {
+        return this.name().toLowerCase();
+    }
+
+     @Override
+     /*  Override the toString method to return the enum value as a lowercase string */
+    public String toString() { 
+        return this.name().toLowerCase();
+    }
 }
