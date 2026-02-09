@@ -203,9 +203,13 @@ The URL must return DDI2.5 XML
 
 ### Return Values
 
-- **Exit code 0** ("pass"): Record meets the validation criteria
-- **Exit code 1** ("fail" or "indeterminate"): Record does not meet criteria,
-    or an error occurred
+The result is returned in JSON-LD format:
+
+```text
+{"value":"pass"}: Record meets the validation criteria
+{"value":"fail"}: Record does not meet the validation criteria
+{"value":"indeterminate"}: An error occured and the record could not be assessed
+```
 
 ## Project Structure
 
