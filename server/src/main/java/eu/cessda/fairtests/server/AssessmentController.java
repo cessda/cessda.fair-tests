@@ -29,6 +29,7 @@ import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
 import eu.cessda.fairtests.dto.ResourceAssessmentRequest;
+import eu.cessda.fairtests.dto.TestResult;
 import jakarta.validation.Valid;
 
 @RestController
@@ -59,14 +60,16 @@ public class AssessmentController {
      *
      * @param testIdentifier the identifier of the test to run
      * @param request the resource assessment request containing the resource_identifier
-     * @return the test results
+     * @return the test result wrapped in a TestResult DTO for consistent API response structure
      */
     @PostMapping(path = "/{test_identifier}")
-    public Result postTestAssessment(
+    public TestResult postTestAssessment(
             @PathVariable(name = "test_identifier") TestType testIdentifier,
             @Valid @RequestBody ResourceAssessmentRequest request) {
         
         URI url = URI.create(request.getResourceIdentifier());
-        return fairTests.runTest(testIdentifier, url);
+        Result result = fairTests.runTest(testIdentifier, url);
+        /* Return the test result wrapped in a TestResult DTO for consistent API response structure */
+        return new TestResult(result);
     }
 }
