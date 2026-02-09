@@ -28,7 +28,7 @@ paths:
           description:  >-
             The response is "pass", "fail" or "indeterminate"
 servers:
-  - url: "https://fair-tests.cessda.eu/api"
+  - url: "https://fair-tests.cessda.eu/assess/test"
 components:
   schemas:
     schemas:

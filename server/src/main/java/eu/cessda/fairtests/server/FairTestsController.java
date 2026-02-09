@@ -36,6 +36,15 @@ import eu.cessda.fairtests.TestType;
 
 /**
  * REST controller for FAIR tests.
+ * Provides endpoints to serve Turtle files and to run FAIR tests on specified URLs.
+ * The controller uses the FairTests service to execute the tests and return results.
+ * The serveTurtleFile method serves Turtle files from the resources/static directory,
+ * validating the filename to prevent path traversal and returning appropriate HTTP
+ * responses based on the existence of the file and any exceptions that may occur.
+ * The accessRights method runs the specified FAIR test on the given URL and returns the results,
+ * allowing clients to assess the FAIRness of their resources by providing a URL and specifying the test to run.
+ * Overall, this controller serves as the main entry point for clients to interact with the FAIR tests API,
+ * providing both file serving capabilities and test execution functionality in a structured and secure manner.
  */
 @RestController
 @RequestMapping("api")
@@ -64,22 +73,23 @@ public class FairTestsController {
             return ResponseEntity.badRequest().build();
         }
 
+        /* Try to load the file and return it, handling any exceptions that may occur */
         try {
             // Load the file from resources/static
             Resource resource = new ClassPathResource("static/" + filename + ".ttl");
 
-            // Check if the file exists
+            /* Check if the file exists before attempting to serve it, returning a 404 Not Found if it doesn't */
             if (!resource.exists()) {
                 return ResponseEntity.notFound().build();
             }
-             // Return the file with appropriate headers
+             /* Serve the file with the correct content type and a content disposition header to suggest inline display in the browser */
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("text/turtle"))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "inline; filename=\"" + filename + ".ttl\"")
                     .body(resource);
 
-        // Catch any unexpected exceptions and return a 500 Internal Server Error
+        /* Catch any unexpected exceptions and return a 500 Internal Server Error */
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -87,6 +97,8 @@ public class FairTestsController {
 
      /**
      * Runs the specified FAIR test on the given URL.
+     * The test to run is specified as a path variable, and the URL to test is provided as a query parameter.
+     * The method uses the FairTests service to execute the test and returns the results as a ResponseEntity<Result>.
      *
      * @param test the test to run.
      * @param url  the URL to test.

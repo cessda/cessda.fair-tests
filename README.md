@@ -80,11 +80,13 @@ mvn -Dexec.mainClass=eu.cessda.fairtests.FairTests \
 
 ### Using Executable JAR
 
+Run a FAIR test by making a POST request to the `/assess/test` endpoint:
+
 ```bash
-mvn clean package
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar
-<test-type> \
-    <CDC URL>
+curl -X POST https://fair-tests.cessda.eu/assess/test/<test-name> \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"<https://example>"}'
 ```
 
 ## Example Usage
@@ -92,64 +94,82 @@ java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ### Test Access Rights
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-access-rights "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/access-rights \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test PID Schema
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-pid "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/pid \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test ELSST Keywords
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-elsst-keywords "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/elsst-keywords \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test CESSDA Topic Classification vocabulary
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-topic-class "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/topic-class \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test DDI Analysis Unit vocabulary
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-ddi-analysis-unit "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-analysis-unit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test DDI Collection Mode vocabulary
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-ddi-collection-mode "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-collection-mode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test DDI Time Method vocabulary
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-ddi-time-method "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-time-method \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test DDI Sampling Procedure vocabulary
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-ddi-sampleproc "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-sampleproc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test Provenance information
 
 ```bash
-java -jar api/target/fair-tests-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-provenance "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"
+curl -X POST https://fair-tests.cessda.eu/assess/test/provenance \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
 ```
 
 ### Test Type Options
@@ -168,6 +188,19 @@ provenance "https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metada
 
 The URL must return DDI2.5 XML
 
+#### Request Format
+
+- **Endpoint**: `POST /assess/test/{test_identifier}`
+- **Path Parameter**: `test_identifier` - The identifier of the test to run
+- **Content-Type**: `application/json`
+- **Request Body**:
+
+```json
+  {
+    "resource_identifier": "<https:example>"
+  }
+```
+
 ### Return Values
 
 - **Exit code 0** ("pass"): Record meets the validation criteria
@@ -176,22 +209,40 @@ The URL must return DDI2.5 XML
 
 ## Project Structure
 
-This project uses the standard Maven project structure.
+This project uses a Spring Boot multi-module structure.
 
 ```text
-<ROOT>
-├── pom.xml
+cessda.fair-tests
+│── .mvn
+    ├── wrapper
+├── api                                         # API module
+│   ├── src
+│   │   ├── main
+│   │   │   └── java/eu/cessda/fairtests        # Contains release source code
+│   │   └── test
+│   │       └── java/eu/cessda/fairtests        # Contains test source code
+│   └── target                                  # Build output directory
+│   ├── Dockerfile
+│   ├── pom.xml
+├── server             # Server implementation module
+│   ├── src
+│   │   └── main
+│   │      ├── java/eu/cessda/fairtests        # Contains release source code
+│   │      └── resources/static                # Contains API descriptions
+│   └── target                                  # Build output directory
+│   ├── Dockerfile
+├── CITATION.cff
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── CONTRIBUTORS.md
 ├── Dockerfile
-├── Description.md      # Detailed technical documentation
-├── README.md          # This file
-├── src                # Contains all source code and assets for the application.
-|   ├── main
-|   |   ├── java       # Contains release source code of the application.
-|   |   └── resources  # Contains release resources assets.
-|   └── test
-|       ├── java       # Contains test source code.
-|       └── resources  # Contains test resource assets.
-└── target             # The output directory for the build.
+├── Jenkinsfile
+├── LICENSE.txt
+├── mvnw
+├── mvnw.cmd
+├── pom.xml                                     # Parent POM
+├── README.md
+└── Test_Logic.md                               # Contains detailled description of how the tests work
 ```
 
 ## How It Works
@@ -200,7 +251,7 @@ See [Test Logic](Test_Logic.md) for details.
 
 ## Technical Details
 
-- **Language**: Java 21
+- **Language**: Java 17
 - **Concurrency**: Uses virtual threads for parallel ELSST API queries
 - **Timeouts**: 10-second connect timeout, 30-second request timeout
 - **Standards**: DDI 2.5 metadata via OAI-PMH, CESSDA controlled vocabularies,
@@ -223,7 +274,7 @@ See [Test Logic](Test_Logic.md) for details.
 
 ### Build Requirements
 
-- **Java 21** or higher
+- **Java 17**
 - **Maven 3.6+** (recommended)
 - **Spring Boot 4.0.1**
 
@@ -277,6 +328,7 @@ As well as adding the methods to run the new test to
 - extend the runTest switch statement
 - extend the [TestType](api/src/main/java/eu/cessda/fairtests/TestType.java) enumeration
 - add Unit tests in [FairTestsTests](api/src/test/java/eu/cessda/fairtests/FairTestsTest.java)
+- add an API descriptor file in the resources/static directory
 
 ## Building from Source
 

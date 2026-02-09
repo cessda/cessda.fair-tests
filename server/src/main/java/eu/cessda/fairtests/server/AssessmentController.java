@@ -29,18 +29,33 @@ import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
 import eu.cessda.fairtests.dto.ResourceAssessmentRequest;
+import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("assess/test")
+@RequestMapping("/assess/test")
+/**
+ * REST controller for handling FAIR test assessments.
+ * Provides an endpoint to run a specified FAIR test on a given resource URL.
+ * The controller uses the FairTests service to execute the tests and return results.
+ * The postTestAssessment method accepts a test identifier as a path variable and a
+ * resource assessment request containing the resource URL in the request body,
+ * validates the input, and returns the test results. 
+ * Overall, this controller serves as the main entry point for clients to submit resources
+ * for FAIR test assessments, providing a structured and validated way to receive input and return results based on the specified tests.
+ */
 public class AssessmentController {
     private final FairTests fairTests;
 
+    /* Constructor for AssessmentController, injecting the FairTests service */
     public AssessmentController(FairTests fairTests) {
         this.fairTests = fairTests;
     }
 
     /**
      * Runs the specified FAIR test on the given resource following the FTR specification.
+     * The test to run is specified as a path variable, and the resource URL to test is provided in the request body
+     * as part of the ResourceAssessmentRequest DTO.
+     * The method uses the FairTests service to execute the test and returns the results as a ResponseEntity<Result>.
      *
      * @param testIdentifier the identifier of the test to run
      * @param request the resource assessment request containing the resource_identifier
@@ -49,7 +64,7 @@ public class AssessmentController {
     @PostMapping(path = "/{test_identifier}")
     public Result postTestAssessment(
             @PathVariable(name = "test_identifier") TestType testIdentifier,
-            @RequestBody ResourceAssessmentRequest request) {
+            @Valid @RequestBody ResourceAssessmentRequest request) {
         
         URI url = URI.create(request.getResourceIdentifier());
         return fairTests.runTest(testIdentifier, url);
