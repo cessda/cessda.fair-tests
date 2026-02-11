@@ -28,10 +28,28 @@ import java.util.UUID;
 import org.springframework.core.io.ClassPathResource;
 import org.yaml.snakeyaml.Yaml;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import eu.cessda.fairtests.Result;
 
+@JsonPropertyOrder({
+    "@context",
+    "@id",
+    "@type",
+    "identifier",
+    "title",
+    "description",
+    "license",
+    "value",
+    "completion",
+    "assessmentTarget",
+    "log",
+    "outputFromTest",
+    "generatedAtTime",
+    "wasGeneratedBy"
+})
 public class TestResult {
 
     @JsonProperty("@context")
@@ -43,7 +61,11 @@ public class TestResult {
     @JsonProperty("@type")
     private String type = "https://w3id.org/ftr#TestResult";
 
+    private String identifier;
+
+    @JsonIgnore
     private static String testName;
+    
     private String title;
     private String description;
     private String testEndpoint = "https://fair-tests.cessda.eu/assess/test/";
@@ -84,6 +106,7 @@ public class TestResult {
     public TestResult(String name, String resourceUrl, Result result) {
         String urn = "urn:cessda:" + UUID.randomUUID().toString();
         this.id = urn;
+        this.identifier = urn;  // identifier should match @id
         TestResult.testName = name;
         this.value = result.toString();
         this.log = getLogMessage(result);
@@ -153,6 +176,15 @@ public class TestResult {
 
     public void setId(String id) {
         this.id = id;
+        this.identifier = id;  // Keep identifier in sync with id
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
+
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public String getType() {
@@ -269,6 +301,9 @@ public class TestResult {
         }
     }
 
+    @JsonPropertyOrder({
+        "@value"
+    })
     public static class Completion {
         @JsonProperty("@value")
         private int value;
@@ -303,6 +338,10 @@ public class TestResult {
         }
     }
 
+    @JsonPropertyOrder({
+        "@id",
+        "@type"
+    })
     public static class OutputFromTest {
         @JsonProperty("@id")
         private String id;
@@ -331,6 +370,10 @@ public class TestResult {
         }
     }
 
+    @JsonPropertyOrder({
+        "@type",
+        "@value"
+    })
     public static class GeneratedAtTime {
         @JsonProperty("@type")
         private String type = "http://www.w3.org/2001/XMLSchema#date";
@@ -360,6 +403,11 @@ public class TestResult {
         }
     }
 
+    @JsonPropertyOrder({
+        "@type",
+        "used",
+        "wasAssociatedWith"
+    })
     public static class WasGeneratedBy {
         @JsonProperty("@type")
         private String type = "TestExecutionActivity";
@@ -416,14 +464,22 @@ public class TestResult {
         }
     }
 
+    @JsonPropertyOrder({
+        "@id",
+        "identifier",
+        "title",
+        "description",
+        "endpointDescription",
+        "endpointURL"
+    })
     public static class WasAssociatedWith {
         @JsonProperty("@id")
         private String id;
 
+        private String identifier;
         private String title;
         private String apiDescription = "https://fair-tests.cessda.eu/api/";
         private String description;
-        private String identifier;
 
         @JsonProperty("endpointDescription")
         private EndpointDescription endpointDescription;
@@ -566,6 +622,15 @@ public class TestResult {
 
         public void setId(String id) {
             this.id = id;
+            this.identifier = id;  // Keep identifier in sync with id
+        }
+
+        public String getIdentifier() {
+            return identifier;
+        }
+
+        public void setIdentifier(String identifier) {
+            this.identifier = identifier;
         }
 
         public String getTitle() {
