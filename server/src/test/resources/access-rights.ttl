@@ -1,0 +1,11 @@
+openapi: 3.0.0
+info:
+  version: "1.0.1"
+  title: "Metadata uses CESSDA Access Rights Vocabulary"
+  description: "Checks whether the data access terms in the metadata belong to the CESSDA Access Rights controlled vocabulary."
+paths:
+  "/access-rights":
+    post:
+      responses:
+        "200":
+          description: "The response is pass, fail or indeterminate"

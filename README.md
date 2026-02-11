@@ -203,13 +203,8 @@ The URL must return DDI2.5 XML
 
 ### Return Values
 
-The result is returned in JSON-LD format:
-
-```text
-{"value":"pass"}: Record meets the validation criteria
-{"value":"fail"}: Record does not meet the validation criteria
-{"value":"indeterminate"}: An error occured and the record could not be assessed
-```
+The result is returned in JSON-LD format.
+See [FAIR Testing Resource Vocabulary](https://ostrails.github.io/FAIR_testing_resource_vocabulary/release/1.2.0/index-en.html#desc) for details.
 
 ## Project Structure
 

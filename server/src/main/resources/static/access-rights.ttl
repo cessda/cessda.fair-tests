@@ -2,7 +2,7 @@
 openapi: 3.0.0
 info:
   version: "1.0.1"
-  title: "Metadata uses CESSDA Access Rights Vocabulary"
+  title: "Metadata uses CESSDA Access Rights Vocabulary."
   x-tests_metric: "https://doi.org/10.25504/FAIRsharing.17a17e"
   description: >-
     "Checks whether the data access terms in the metadata belong to the CESSDA Access Rights controlled vocabulary."

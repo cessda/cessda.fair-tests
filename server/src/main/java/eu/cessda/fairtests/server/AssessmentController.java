@@ -69,7 +69,9 @@ public class AssessmentController {
         
         URI url = URI.create(request.getResourceIdentifier());
         Result result = fairTests.runTest(testIdentifier, url);
+
         /* Return the test result wrapped in a TestResult DTO for consistent API response structure */
-        return new TestResult(result);
+        return new TestResult(testIdentifier.name(), url.toString(), result);
+       
     }
 }
