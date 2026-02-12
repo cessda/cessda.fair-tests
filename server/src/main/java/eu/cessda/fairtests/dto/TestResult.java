@@ -102,8 +102,9 @@ public class TestResult {
      * @param result the result of the test, typically an enum value representing the outcome,
      * used to set the value field of the test result
      */
-    public TestResult(String name, String resourceUrl, Result result) {
+    public TestResult(String testName, String resourceUrl, Result result) {
         String urn = "urn:cessda:" + UUID.randomUUID().toString();
+        String name = testName.toLowerCase();
         this.id = urn;
         this.identifier = urn;  // identifier should match @id
         this.testName = name;

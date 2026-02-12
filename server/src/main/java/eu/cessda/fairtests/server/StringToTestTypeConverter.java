@@ -17,13 +17,14 @@
 
 package eu.cessda.fairtests.server;
 
-import eu.cessda.fairtests.TestType;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.stereotype.Component;
-
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.stereotype.Component;
+
+import eu.cessda.fairtests.TestType;
 
 /**
  * Converter to convert String to TestType.
@@ -35,7 +36,7 @@ public class StringToTestTypeConverter implements Converter<String, TestType> {
     public StringToTestTypeConverter() {
         this.testMap = new ConcurrentHashMap<>();
         for (TestType testType : EnumSet.allOf(TestType.class)) {
-            testMap.put(testType.testName(), testType);
+            testMap.put(testType.getTestName(), testType);
         }
     }
 

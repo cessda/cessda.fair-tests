@@ -59,13 +59,13 @@ public enum TestType {
      * @param name the test name as used by the REST API and the CLI
      */
     TestType(String name) {
-        this.name = name;
+        this.name = name.toLowerCase();
     }
 
     /**
      * Gets the test name.
      */
-    public String testName() {
-        return name;
+    public String getTestName() {
+        return name.toLowerCase();
     }
 }

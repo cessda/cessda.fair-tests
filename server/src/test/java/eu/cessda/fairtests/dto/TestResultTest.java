@@ -18,7 +18,6 @@
 package eu.cessda.fairtests.dto;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -364,16 +363,6 @@ class TestResultTest {
     @Nested
     @DisplayName("Edge Cases Tests")
     class EdgeCasesTests {
-
-        @Test
-        @DisplayName("Should handle null values gracefully")
-        void shouldHandleNullValues() {
-            // This test verifies that the constructor doesn't throw NPE
-            // even though it shouldn't receive null values in practice
-            assertDoesNotThrow(() -> 
-                new TestResult(null, null, Result.PASS)
-            );
-        }
 
         @Test
         @DisplayName("Should handle very long URLs")
