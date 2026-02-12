@@ -19,6 +19,7 @@ package eu.cessda.fairtests.server;
 
 import java.net.URI;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +30,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
@@ -51,6 +55,7 @@ import eu.cessda.fairtests.TestType;
 public class FairTestsController {
     private final FairTests fairTests;
 
+    
     /**
      * Constructor for FairTestsController.
      * 
@@ -58,6 +63,15 @@ public class FairTestsController {
      */
     public FairTestsController(FairTests fairTests) {
         this.fairTests = fairTests;
+    }
+
+     @Autowired
+    private ObjectMapper objectMapper;
+
+     @GetMapping("/test-mapper-config")
+    public String testConfig() {
+        return "SORT_ALPHABETICALLY: " + 
+            objectMapper.isEnabled(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY);
     }
 
     /**
