@@ -19,7 +19,6 @@ package eu.cessda.fairtests.server;
 
 import java.net.URI;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -31,48 +30,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import eu.cessda.fairtests.FairTests;
 import eu.cessda.fairtests.Result;
 import eu.cessda.fairtests.TestType;
 
 /**
  * REST controller for FAIR tests.
- * Provides endpoints to serve Turtle files and to run FAIR tests on specified URLs.
- * The controller uses the FairTests service to execute the tests and return results.
- * The serveTurtleFile method serves Turtle files from the resources/static directory,
- * validating the filename to prevent path traversal and returning appropriate HTTP
- * responses based on the existence of the file and any exceptions that may occur.
- * The accessRights method runs the specified FAIR test on the given URL and returns the results,
- * allowing clients to assess the FAIRness of their resources by providing a URL and specifying the test to run.
- * Overall, this controller serves as the main entry point for clients to interact with the FAIR tests API,
- * providing both file serving capabilities and test execution functionality in a structured and secure manner.
+ * Provides endpoints to serve Turtle files and to run FAIR tests on specified
+ * URLs.
+ * The controller uses the FairTests service to execute the tests and return
+ * results.
+ * The serveTurtleFile method serves Turtle files from the resources/static
+ * directory,
+ * validating the filename to prevent path traversal and returning appropriate
+ * HTTP
+ * responses based on the existence of the file and any exceptions that may
+ * occur.
+ * The accessRights method runs the specified FAIR test on the given URL and
+ * returns the results,
+ * allowing clients to assess the FAIRness of their resources by providing a URL
+ * and specifying the test to run.
+ * Overall, this controller serves as the main entry point for clients to
+ * interact with the FAIR tests API,
+ * providing both file serving capabilities and test execution functionality in
+ * a structured and secure manner.
  */
 @RestController
 @RequestMapping("api")
 public class FairTestsController {
-    private final FairTests fairTests;
-
-    
-    /**
-     * Constructor for FairTestsController.
-     * 
-     * @param fairTests the FairTests service
-     */
-    public FairTestsController(FairTests fairTests) {
-        this.fairTests = fairTests;
-    }
-
-     @Autowired
-    private ObjectMapper objectMapper;
-
-     @GetMapping("/test-mapper-config")
-    public String testConfig() {
-        return "SORT_ALPHABETICALLY: " + 
-            objectMapper.isEnabled(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY);
-    }
+    private final FairTests fairTests = new FairTests();
 
     /**
      * Serves a Turtle file from the resources/static directory.
@@ -92,27 +78,35 @@ public class FairTestsController {
             // Load the file from resources/static
             Resource resource = new ClassPathResource("static/" + filename + ".ttl");
 
-            /* Check if the file exists before attempting to serve it, returning a 404 Not Found if it doesn't */
+            /*
+             * Check if the file exists before attempting to serve it, returning a 404 Not
+             * Found if it doesn't
+             */
             if (!resource.exists()) {
                 return ResponseEntity.notFound().build();
             }
-             /* Serve the file with the correct content type and a content disposition header to suggest inline display in the browser */
+            /*
+             * Serve the file with the correct content type and a content disposition header
+             * to suggest inline display in the browser
+             */
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("text/turtle"))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "inline; filename=\"" + filename + ".ttl\"")
                     .body(resource);
 
-        /* Catch any unexpected exceptions and return a 500 Internal Server Error */
+            /* Catch any unexpected exceptions and return a 500 Internal Server Error */
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
-     /**
+    /**
      * Runs the specified FAIR test on the given URL.
-     * The test to run is specified as a path variable, and the URL to test is provided as a query parameter.
-     * The method uses the FairTests service to execute the test and returns the results as a ResponseEntity<Result>.
+     * The test to run is specified as a path variable, and the URL to test is
+     * provided as a query parameter.
+     * The method uses the FairTests service to execute the test and returns the
+     * results as a ResponseEntity<Result>.
      *
      * @param test the test to run.
      * @param url  the URL to test.
