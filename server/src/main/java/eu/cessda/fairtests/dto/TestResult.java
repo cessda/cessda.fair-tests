@@ -63,8 +63,7 @@ public class TestResult {
 
     private String identifier;
 
-    @JsonIgnore
-    private static String testName;
+    private String testName;
     
     private String title;
     private String description;
@@ -107,7 +106,7 @@ public class TestResult {
         String urn = "urn:cessda:" + UUID.randomUUID().toString();
         this.id = urn;
         this.identifier = urn;  // identifier should match @id
-        TestResult.testName = name;
+        this.testName = name;
         this.value = result.toString();
         this.log = getLogMessage(result);
         this.title = "Output from running test: " + name +
@@ -195,6 +194,7 @@ public class TestResult {
         this.type = type;
     }
 
+    @JsonIgnore
     public String getTestName() {
         return testName;
     }
