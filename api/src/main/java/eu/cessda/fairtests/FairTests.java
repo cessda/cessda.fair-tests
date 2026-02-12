@@ -242,7 +242,7 @@ public class FairTests {
 
         var testMap = new HashMap<String, TestType>();
         for (TestType testType : EnumSet.allOf(TestType.class)) {
-            testMap.put(testType.testName(), testType);
+            testMap.put(testType.getTestName(), testType);
         }
 
         if (commandLine.getArgList().size() < 2 || !testMap.containsKey(commandLine.getArgList().get(0))) {
