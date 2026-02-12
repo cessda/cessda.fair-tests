@@ -115,7 +115,7 @@ public class TestResult {
         this.license = new License("http://creativecommons.org/licenses/by/4.0/");
         this.completion = new Completion(getCompletionPercentage(result));
         this.assessmentTarget = new AssessmentTarget(resourceUrl);
-        this.outputFromTest = new OutputFromTest("https://fair-tests.cessda.eu/assess/test/" + testName);
+        this.outputFromTest = new OutputFromTest("https://fair-tests.cessda.eu/assess/test/" + name);
         this.generatedAtTime = new GeneratedAtTime();
         this.wasGeneratedBy = new WasGeneratedBy(resourceUrl, name, this);
         this.description = wasGeneratedBy.getWasAssociatedWith().getDescription();
