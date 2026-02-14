@@ -33,6 +33,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import eu.cessda.fairtests.Result;
+import eu.cessda.fairtests.TestType;
 
 @JsonPropertyOrder({
     "@context",
@@ -68,8 +69,9 @@ public class TestResult {
     private String title;
     private String description;
     private String testEndpoint = "https://fair-tests.cessda.eu/assess/test/";
+    private String testDocumentationEndpoint = "https://fair-tests.cessda.eu/api/"; 
 
-    private License license;
+    private String license; 
     private String value;
 
     private Completion completion;
@@ -111,11 +113,11 @@ public class TestResult {
         this.value = result.toString();
         this.log = getLogMessage(result);
         this.title = "Output from running test: " + name +
-                " (https://fair-tests.cessda.eu/assess/test/" + name + ")";
-        this.license = new License("http://creativecommons.org/licenses/by/4.0/");
+                " (" + testEndpoint + name + ")";
+        this.license = "http://creativecommons.org/licenses/by/4.0/";
         this.completion = new Completion(getCompletionPercentage(result));
         this.assessmentTarget = new AssessmentTarget(resourceUrl);
-        this.outputFromTest = new OutputFromTest("https://fair-tests.cessda.eu/assess/test/" + name);
+        this.outputFromTest = new OutputFromTest(testEndpoint + name);
         this.generatedAtTime = new GeneratedAtTime();
         this.wasGeneratedBy = new WasGeneratedBy(resourceUrl, name, this);
         this.description = wasGeneratedBy.getWasAssociatedWith().getDescription();
@@ -220,11 +222,11 @@ public class TestResult {
         this.description = description;
     }
 
-    public License getLicense() {
+    public String getLicense() {
         return license;
     }
 
-    public void setLicense(License license) {
+    public void setLicense(String license) {
         this.license = license;
     }
 
@@ -285,23 +287,6 @@ public class TestResult {
     }
 
     // Nested classes
-    public static class License {
-        @JsonProperty("@id")
-        private String id;
-
-        public License(String id) {
-            this.id = id;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-    }
-
     @JsonPropertyOrder({
         "@value"
     })
@@ -409,6 +394,17 @@ public class TestResult {
         "used",
         "wasAssociatedWith"
     })
+
+    /**
+     * The WasGeneratedBy class represents the entity that is associated with the generation of the test result.
+     * It contains information about the test that was run, including its title, description,
+     * and endpoints for documentation and execution. 
+     * The constructor of this class initializes these fields based on the provided test name and
+     * the TestResult object, allowing it to dynamically generate metadata for the test based on
+     * the test name and the results of the test execution. The class also includes helper methods
+     * to load metadata from corresponding Turtle files, providing a way to enrich the information
+     * about the test based on external resources.
+     */
     public static class WasGeneratedBy {
         @JsonProperty("@type")
         private String type = "TestExecutionActivity";
@@ -473,14 +469,25 @@ public class TestResult {
         "endpointDescription",
         "endpointURL"
     })
+
+    /**
+     * The WasAssociatedWith class represents the entity that is associated with the generation of the test result.
+     * It contains information about the test that was run, including its title, description,
+     * and endpoints for documentation and execution. 
+     * The constructor of this class initializes these fields based on the provided test name and
+     * the TestResult object, allowing it to dynamically generate metadata for the test based on
+     * the test name and the results of the test execution. The class also includes helper methods
+     * to load metadata from corresponding Turtle files, providing a way to enrich the information
+     * about the test based on external resources.
+     */
     public static class WasAssociatedWith {
         @JsonProperty("@id")
         private String id;
 
         private String identifier;
         private String title;
-        private String apiDescription = "https://fair-tests.cessda.eu/api/";
         private String description;
+        private String testDescriptionFilepath = "https://ostrails.github.io/assessment-component-metadata-records/test/";
 
         @JsonProperty("endpointDescription")
         private EndpointDescription endpointDescription;
@@ -488,13 +495,27 @@ public class TestResult {
         @JsonProperty("endpointURL")
         private EndpointURL endpointURL;
 
+
+        /**
+         * Constructor for WasAssociatedWith class, which initialises the fields based on 
+         * the provided test name and test result.
+         * The constructor generates the @id and identifier based on the test description
+         * filepath and the FAIR test ID corresponding to the given test name.
+         * It also sets the title and description by loading metadata from
+         *
+         * @param testName the name of the test, used to determine the FAIR test ID and
+         *  to load the title and description from the corresponding Turtle file
+         * @param result the TestResult object, used to construct the endpoint
+         *  description and URL based on the test endpoint and test name
+         */
         public WasAssociatedWith(String testName, TestResult result) {
-            this.id = result.testEndpoint + testName;
-            this.identifier = this.id;
+            String testDescriptionFilename = testDescriptionFilepath + TestType.getFairTestId(testName);
+            this.id = testDescriptionFilename;
+            this.identifier = testDescriptionFilename;  // identifier should match @id    
             this.title = getTestTitle(testName);
             this.description = getTestDescription(testName);
             this.endpointDescription = new EndpointDescription(
-                    apiDescription + testName + ".ttl");
+                    result.testDocumentationEndpoint + testName + ".ttl");
             this.endpointURL = new EndpointURL(result.testEndpoint + testName);
         }
 

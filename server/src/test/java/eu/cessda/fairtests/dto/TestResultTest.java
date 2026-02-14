@@ -125,7 +125,7 @@ class TestResultTest {
 
             // Assert
             assertNotNull(result.getLicense());
-            assertEquals("http://creativecommons.org/licenses/by/4.0/", result.getLicense().getId());
+            assertEquals("http://creativecommons.org/licenses/by/4.0/", result.getLicense());
         }
 
         @Test
