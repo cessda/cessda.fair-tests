@@ -71,7 +71,7 @@ public class TestResult {
     private String testEndpoint = "https://fair-tests.cessda.eu/assess/test/";
     private String testDocumentationEndpoint = "https://fair-tests.cessda.eu/api/"; 
 
-    private String license; 
+    private License license; 
     private String value;
 
     private Completion completion;
@@ -114,7 +114,7 @@ public class TestResult {
         this.log = getLogMessage(result);
         this.title = "Output from running test: " + name +
                 " (" + testEndpoint + name + ")";
-        this.license = "http://creativecommons.org/licenses/by/4.0/";
+        this.license = new License("http://creativecommons.org/licenses/by/4.0/");
         this.completion = new Completion(getCompletionPercentage(result));
         this.assessmentTarget = new AssessmentTarget(resourceUrl);
         this.outputFromTest = new OutputFromTest(testEndpoint + name);
@@ -222,11 +222,11 @@ public class TestResult {
         this.description = description;
     }
 
-    public String getLicense() {
+    public License getLicense() {
         return license;
     }
 
-    public void setLicense(String license) {
+    public void setLicense(License license) {
         this.license = license;
     }
 
@@ -287,6 +287,23 @@ public class TestResult {
     }
 
     // Nested classes
+     public static class License {
+        @JsonProperty("@id")
+        private String id;
+
+        public License(String id) {
+            this.id = id;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+    }
+
     @JsonPropertyOrder({
         "@value"
     })
