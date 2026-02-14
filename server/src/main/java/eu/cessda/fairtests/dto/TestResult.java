@@ -526,7 +526,7 @@ public class TestResult {
          *  description and URL based on the test endpoint and test name
          */
         public WasAssociatedWith(String testName, TestResult result) {
-            String testDescriptionFilename = testDescriptionFilepath + TestType.getFairTestId(testName);
+            String testDescriptionFilename = testDescriptionFilepath + TestType.getFairTestId(testName) + ".ttl";
             this.id = testDescriptionFilename;
             this.identifier = testDescriptionFilename;  // identifier should match @id    
             this.title = getTestTitle(testName);
