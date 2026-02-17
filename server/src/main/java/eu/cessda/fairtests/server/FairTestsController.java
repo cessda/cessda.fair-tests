@@ -17,8 +17,6 @@
 
 package eu.cessda.fairtests.server;
 
-import java.net.URI;
-
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -27,12 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import eu.cessda.fairtests.FairTests;
-import eu.cessda.fairtests.Result;
-import eu.cessda.fairtests.TestType;
 
 /**
  * REST controller for FAIR tests.
@@ -58,7 +51,6 @@ import eu.cessda.fairtests.TestType;
 @RestController
 @RequestMapping("api")
 public class FairTestsController {
-    private final FairTests fairTests = new FairTests();
 
     /**
      * Serves a Turtle file from the resources/static directory.
@@ -111,9 +103,11 @@ public class FairTestsController {
      * @param test the test to run.
      * @param url  the URL to test.
      * @return the results.
-     */
+     * @deprecated This method is deprecated in favor of the postTestAssessment method, which follows the FTR specification and accepts input in the request body for better structure and validation.
+
     @GetMapping(path = "{test}")
     public Result accessRights(@PathVariable(name = "test") TestType test, @RequestParam(name = "url") URI url) {
         return fairTests.runTest(test, url);
     }
+     */
 }
