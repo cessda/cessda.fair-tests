@@ -204,7 +204,8 @@ The URL must return DDI2.5 XML
 ### Return Values
 
 The result is returned in JSON-LD format.
-See [FAIR Testing Resource Vocabulary](https://ostrails.github.io/FAIR_testing_resource_vocabulary/release/1.2.0/index-en.html#desc) for details.
+See FAIR Testing Resource Vocabulary,
+[Example: Describing a single test result](https://ostrails.github.io/FAIR_testing_resource_vocabulary/release/1.2.0/index-en.html#desc) for details.
 
 ## Project Structure
 

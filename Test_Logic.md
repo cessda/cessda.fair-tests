@@ -158,7 +158,7 @@ match exactly (case-sensitive comparison).
 
 ---
 
-## DDI Analysis Unit Vocabulary (ddi-anunit)
+## DDI Analysis Unit Vocabulary (ddi-analysis-unit)
 
 **Purpose:** Verifies that a record uses DDI Analysis Unit controlled
 vocabulary.
@@ -214,7 +214,7 @@ metadata
 
 ---
 
-## DDI Mode of Collection Vocabulary (ddi-colmod)
+## DDI Mode of Collection Vocabulary (ddi-collection-mode)
 
 **Purpose:** Confirms that a record uses DDI Mode of Collection controlled
 vocabulary.
@@ -241,7 +241,7 @@ metadata
 
 ---
 
-## DDI Time Method Vocabulary (ddi-timeth)
+## DDI Time Method Vocabulary (ddi-time-method)
 
 **Purpose:** Validates that a record uses DDI Time Method controlled vocabulary.
 

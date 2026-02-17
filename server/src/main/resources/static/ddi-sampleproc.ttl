@@ -1,7 +1,7 @@
 
 openapi: 3.0.0
 info:
-  version: "1.0.1"
+  version: "1.0.2"
   title: "Metadata Uses DDI Sampling Procedure Vocabulary"
   x-tests_metric: "https://doi.org/10.25504/FAIRsharing.59ad4f"
   description: >-
@@ -15,7 +15,7 @@ info:
     email: "john.shepherdson@cessda.eu"
     x-id: "https://orcid.org/0000-0002-4402-9644"
 paths:
-  "/ddi-sample-proc":
+  "/ddi-sampleproc":
     post:
       requestBody:
         content:
