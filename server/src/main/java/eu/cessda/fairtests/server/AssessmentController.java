@@ -58,13 +58,13 @@ public class AssessmentController {
      * as part of the ResourceAssessmentRequest DTO.
      * The method uses the FairTests service to execute the test and returns the results as a ResponseEntity<Result>.
      *
-     * @param test_identifier the name of the FAIR test to run, provided as a path variable
+     * @param testIdentifier the identifier of the test to run
      * @param request the resource assessment request containing the resource_identifier
      * @return the test result wrapped in a TestResult DTO for consistent API response structure
      */
-    @PostMapping(path = "/{test_identifier}", consumes = "application/json", produces = "application/json")
+    @PostMapping(path = "/{test_identifier}")
     public TestResult postTestAssessment(
-            @PathVariable(name = "test") TestType testIdentifier,
+            @PathVariable(name = "test_identifier") TestType testIdentifier,
             @Valid @RequestBody ResourceAssessmentRequest request) {
         
         URI url = URI.create(request.getResourceIdentifier());
