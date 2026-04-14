@@ -17,11 +17,11 @@
 
 package eu.cessda.fairtests;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -32,9 +32,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 class FairTestsTest {
 
@@ -300,7 +302,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
+            assertEquals(Result.INDETERMINATE, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
         }
 
         @Test

@@ -18,6 +18,7 @@
 package eu.cessda.fairtests;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -34,7 +35,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -131,6 +135,9 @@ public class FairTests {
     private static final String ELSST_VOCAB_NAME = "ELSST";
     private static final String ELSST_URI_SUBSTRING = "elsst.cessda.eu";
     private static final String HTTP_HEADER_ACCEPT = "Accept";
+
+    // Cache for ELSST keywords by language code and keyword list (to avoid repeated API calls for the same language and keywords)
+    private final ConcurrentMap<String, Set<String>> cachedElsstKeywordsByLang = new ConcurrentHashMap<>();
 
     // Topic Classification constant
     private static final String TOPIC_CLASS_VOCAB_NAME = "CESSDA Topic Classification";
@@ -772,45 +779,72 @@ public class FairTests {
      * @return Result of the validation
      */
     private Result validateCandidatesAgainstElsstApi(List<KeywordCandidate> candidates, String languageCode) {
-        try {
+    try {
 
-            List<String> candidateTexts = candidates.stream().map(KeywordCandidate::text).toList();
-            Set<String> elsstKeywords = fetchElsstKeywords(candidateTexts, languageCode);
+        List<String> candidateTexts = candidates.stream()
+                .map(c -> c.text().trim().toUpperCase())
+                .toList();
 
-            Set<String> elsstSet = elsstKeywords.stream()
-                    .filter(k -> k.startsWith(languageCode + ":"))
-                    .map(k -> k.substring(languageCode.length() + 2).replace("\"", "").trim().toUpperCase())
-                    .collect(Collectors.toSet());
+        Set<String> elsstKeywords = fetchElsstKeywords(candidateTexts, languageCode);
 
-            for (KeywordCandidate candidate : candidates) {
-                logger.log(Level.INFO, "Checking candidate keyword against ELSST API results: ''{0}''", candidate.text());
-                if (elsstSet.contains(candidate.text().toUpperCase())) {
-                    logger.info(Result.PASS + ": Keyword '" + candidate.text() + "' meets ALL three conditions (vocab, vocabURI, and API match)");
-                    return Result.PASS;
-                }
+        logger.info("ELSST keywords fetched from API: " + elsstKeywords);
+
+        // Normalize API results (safe defensive normalization)
+        Set<String> normalisedElsst = elsstKeywords.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .collect(Collectors.toSet());
+
+        logger.info("ELSST keywords normalised for comparison: " + normalisedElsst);
+
+        for (KeywordCandidate candidate : candidates) {
+
+            String normalisedCandidate = candidate.text().trim().toUpperCase();
+
+            logger.log(Level.INFO,
+                    "Checking candidate keyword against ELSST API results: ''{0}''",
+                    normalisedCandidate);
+
+            if (normalisedElsst.contains(normalisedCandidate)) {
+                logger.info(Result.PASS
+                        + ": Keyword '" + candidate.text()
+                        + "' matches ELSST API result");
+
+                return Result.PASS;
             }
-
-            logger.info(Result.FAIL + ": No keywords meet all three conditions");
-            return Result.FAIL;
-
-        } catch (IOException e) {
-            logger.severe("Failed to fetch ELSST keywords: " + e.getMessage());
-            return Result.INDETERMINATE;
         }
+
+        logger.info(Result.FAIL + ": No keywords match ELSST API results");
+        return Result.FAIL;
+
+    } catch (IOException e) {
+        logger.severe("Failed to fetch ELSST keywords: " + e.getMessage());
+        return Result.INDETERMINATE;
     }
+}
 
     /**
      * Fetch ELSST keywords from the ELSST API for the given list of keywords and language code.
+     * @param keywords     List of keyword texts to search for
+     * @param langCode     Language code for the API query (e.g. "en", "fr", etc.)
      * @return a set of ELSST keywords
      */
     private Set<String> fetchElsstKeywords(List<String> keywords, String langCode) throws IOException {
-        if (!cachedElsstKeywords.isEmpty()) {
-            return cachedElsstKeywords;
+
+        String cacheKey = langCode + "|" + String.join(",", keywords);
+
+        // Return cached result if available
+        Set<String> cached = cachedElsstKeywordsByLang.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
 
+        Set<String> result = ConcurrentHashMap.newKeySet();
         String encodedLangCode = URLEncoder.encode(langCode, StandardCharsets.UTF_8);
 
-        for (var k : keywords) {
+        for (String k : keywords) {
+
             String url = ELSST_API_BASE
                     + "?filter=cf.search.labels:" + URLEncoder.encode(k, StandardCharsets.UTF_8)
                     + ",cf.search.language:" + encodedLangCode;
@@ -821,31 +855,52 @@ public class FairTests {
                     .uri(URI.create(url))
                     .header(HTTP_HEADER_ACCEPT, "application/json")
                     .timeout(Duration.ofSeconds(30))
-                    .GET().build();
+                    .GET()
+                    .build();
 
-            var response = getHTTPResponse(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = getHTTPResponse(
+                    request,
+                    HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
                 throw new IOException("ELSST API returned " + response.statusCode() + " for: " + url);
             }
 
-            Set<String> keywordsToCache = new HashSet<>();
-            JsonNode results = mapper.readTree(response.body()).path("@graph");
-            for (JsonNode arrayNode : results) {  // Iterate outer array
-                for (JsonNode topicNode : arrayNode) {  // Iterate inner array
+            try (InputStream body = response.body()) {
+
+                JsonNode root = mapper.readTree(body);
+                JsonNode graph = root.path("@graph");
+
+                if (!graph.isArray()) {
+                    throw new IOException("Invalid API response: '@graph' is missing or not an array");
+                }
+
+                for (JsonNode topicNode : graph) {
+
                     JsonNode labels = topicNode.path("labels");
-                    if (labels.isObject()) {
-                        labels.propertyStream().forEach(e ->
-                                keywordsToCache.add(e.getKey() + ":\"" + e.getValue().asText() + "\"")
-                        );
+
+                    if (!labels.isObject()) {
+                        continue;
+                    }
+
+                    JsonNode langLabel = labels.get(langCode);
+
+                    if (langLabel != null && !langLabel.isNull()) {
+                        String value = langLabel.asText();
+                        if (!value.isBlank()) {
+                            result.add(value);
+                        }
                     }
                 }
             }
-            cachedElsstKeywords.addAll(keywordsToCache);
         }
 
-        logger.log(Level.INFO, "Number of cachedElsstKeywords: {0}", cachedElsstKeywords.size());
-        return cachedElsstKeywords;
+        cachedElsstKeywordsByLang.put(cacheKey, result);
+
+        logger.log(Level.INFO, "Cached ELSST keywords for key {0}: {1} entries",
+                new Object[] { cacheKey, result.size() });
+
+        return result;
     }
 
     // ============================================================================

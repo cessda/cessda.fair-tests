@@ -328,10 +328,9 @@ class TestResultTest {
         void shouldDeserializeFromJson() throws Exception {
             // Arrange - create a TestResult and serialize it to JSON
             TestResult original = new TestResult(TEST_NAME, RESOURCE_URL, Result.PASS);
-             String json = null;
            
              try {
-                json = objectMapper.writeValueAsString(original);
+                objectMapper.writeValueAsString(original);
             } catch (Exception e) {
                 // This should not happen, but if it does, fail the test
                 throw new RuntimeException("Failed to set up test data", e);
