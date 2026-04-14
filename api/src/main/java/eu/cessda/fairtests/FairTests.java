@@ -90,7 +90,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <UL>
  * <LI>"pass": the record meets the criteria</LI>
  * <LI>"fail": the record does not meet the criteria</LI>
- * <LI>"indeterminate": an error occurred preventing definitive determination</LI>
+ * <LI>"indeterminate": an error occurred preventing definitive
+ * determination</LI>
  * </UL>
  */
 public class FairTests {
@@ -100,43 +101,36 @@ public class FairTests {
 
     // Namespace and URL constants
     private static final String DDI_NAMESPACE = "ddi:codebook:2_5";
-   // Logging messages
+    // Logging messages
     private static final String ERROR = "Error: ";
     // Logging messages
     private static final String FETCHED = "Fetched ";
 
-     // ELSST API base URL
-    private static final String ELSST_API_BASE =
-           "https://skg-if-staging.cessda.eu/api/topics";
+    // ELSST API base URL
+    private static final String ELSST_API_BASE = "https://skg-if-staging.cessda.eu/api/topics";
 
     // Access Rights vocabulary URL
-    private static final String ACCESS_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
+    private static final String ACCESS_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaAccessRights/1.0.0?languageVersion=en-1.0.0&format=json";
     // PID vocabulary URL
-    private static final String PID_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
+    private static final String PID_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0?languageVersion=en-1.0.0&format=json";
     // Topic Classification vocabulary URL
-    private static final String TOPIC_CLASS_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.2.3?languageVersion=en-4.2.3&format=json";
+    private static final String TOPIC_CLASS_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/TopicClassification/4.2.3?languageVersion=en-4.2.3&format=json";
     // Recommended DDI vocabularies URLs
-    private static final String ANALYSIS_UNIT_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/2.1.3?languageVersion=en-2.1.3&format=json";
+    private static final String ANALYSIS_UNIT_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/AnalysisUnit/2.1.3?languageVersion=en-2.1.3&format=json";
     // Time Method vocabulary URL
-    private static final String TIME_METHOD_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.3?languageVersion=en-1.2.3&format=json";
+    private static final String TIME_METHOD_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/TimeMethod/1.2.3?languageVersion=en-1.2.3&format=json";
     // Sampling Procedure vocabulary URL
-    private static final String SAMPLING_PROC_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.1?languageVersion=en-2.0.1&format=json";
+    private static final String SAMPLING_PROC_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.1?languageVersion=en-2.0.1&format=json";
     // Mode of Collection vocabulary URL
-    private static final String COLLECTION_MODE_VOCAB_URL =
-            "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/5.0.0?languageVersion=en-5.0.0&format=json";
+    private static final String COLLECTION_MODE_VOCAB_URL = "https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/5.0.0?languageVersion=en-5.0.0&format=json";
 
     // ELSST constants
     private static final String ELSST_VOCAB_NAME = "ELSST";
     private static final String ELSST_URI_SUBSTRING = "elsst.cessda.eu";
     private static final String HTTP_HEADER_ACCEPT = "Accept";
 
-    // Cache for ELSST keywords by language code and keyword list (to avoid repeated API calls for the same language and keywords)
+    // Cache for ELSST keywords by language code and keyword list (to avoid repeated
+    // API calls for the same language and keywords)
     private final ConcurrentMap<String, Set<String>> cachedElsstKeywordsByLang = new ConcurrentHashMap<>();
 
     // Topic Classification constant
@@ -199,7 +193,8 @@ public class FairTests {
         // Compile XPaths
         try {
             ddiCodebookXPath = xPath.compile("//ddi:codeBook");
-            // for DDI2.5 use conditions element as typeOfAccess is not available until DDI2.6
+            // for DDI2.5 use conditions element as typeOfAccess is not available until
+            // DDI2.6
             accessRightsXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:useStmt/ddi:conditions");
             analysisUnitXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit");
             collectionModeXPath = xPath.compile("//ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode");
@@ -223,17 +218,18 @@ public class FairTests {
      * @return String of valid test types
      */
     private static String getValidTestTypes() {
-    return Arrays.stream(TestType.values())
-        .map(TestType::getTestName)
-        .collect(Collectors.joining(", "));
-}
+        return Arrays.stream(TestType.values())
+                .map(TestType::getTestName)
+                .collect(Collectors.joining(", "));
+    }
 
     /**
      * Main method for command-line execution.
      *
-     * @param args args[0]: test type (e.g. "access-rights", "pid", "elsst-keywords", etc.)
+     * @param args args[0]: test type (e.g. "access-rights", "pid",
+     *             "elsst-keywords", etc.)
      *             args[1]: A URL that should return DDI2.5 metadata
-     * @throws ParseException               if the command line is invalid.
+     * @throws ParseException if the command line is invalid.
      */
     @SuppressWarnings("java:S106")
     public static void main(String[] args) throws ParseException, URISyntaxException {
@@ -253,7 +249,8 @@ public class FairTests {
         }
 
         if (commandLine.getArgList().size() < 2 || !testMap.containsKey(commandLine.getArgList().get(0))) {
-            formatter.printHelp("FairTests <test-type> <url>\ntest types: " + getValidTestTypes(), null, options, null, false);
+            formatter.printHelp("FairTests <test-type> <url>\ntest types: " + getValidTestTypes(), null, options, null,
+                    false);
             System.exit(1);
         }
 
@@ -270,21 +267,22 @@ public class FairTests {
         Result result = tests.runTest(test, url);
 
         logger.log(Level.INFO, "Result: {0}", result);
-        System.out.println(result); 
+        System.out.println(result);
         System.exit(Result.PASS == result ? 0 : 1);
     }
 
     /**
      * Fetch the default approved Access Rights terms.
+     * 
      * @return Set of approved Access Rights terms
      */
     private static Set<String> defaultAccessRightsTerms() {
         return Set.of("open", "restricted");
     }
 
-
     /**
      * Fetch the default approved PID schemas.
+     * 
      * @return Set of approved PID schema names
      */
     private static Set<String> defaultPidSchemas() {
@@ -297,8 +295,9 @@ public class FairTests {
 
     /**
      * Run the specified test against the given URL.
+     * 
      * @param test The test to run
-     * @param url A URL that should return DDI2.5 metadata
+     * @param url  A URL that should return DDI2.5 metadata
      * @return Result of the test: "pass", "fail", or "indeterminate"
      */
     public Result runTest(TestType test, URI url) {
@@ -331,7 +330,6 @@ public class FairTests {
         }
     }
 
-
     /**
      * Checks whether a DDI2.5 record contains an approved PID schema.
      *
@@ -351,7 +349,8 @@ public class FairTests {
     }
 
     /**
-     * Checks whether a DDI2.5 record contains ELSST keywords that meet ALL three criteria:
+     * Checks whether a DDI2.5 record contains ELSST keywords that meet ALL three
+     * criteria:
      * The vocab attribute equals "ELSST" (exact match, case-sensitive)
      * The vocabURI attribute contains "elsst.cessda.eu" (substring match)
      * The keyword value exists in the ELSST vocabulary (case-insensitive match)
@@ -368,7 +367,6 @@ public class FairTests {
             return Result.INDETERMINATE;
         }
     }
-
 
     /**
      * Checks whether a DDI2.5 record uses Topic Classification vocabulary
@@ -419,13 +417,13 @@ public class FairTests {
         }
     }
 
-     /**
+    /**
      * Checks whether a DDI2.5 record uses the DDI Time Method vocabulary.
      *
      * @param url A URL that should return DDI2.5 metadata
      * @return "pass", "fail", or "indeterminate"
      */
-     public Result containsDdiTimeMethod(URI url) {
+    public Result containsDdiTimeMethod(URI url) {
         try {
             Document doc = fetchAndParseDocument(url);
             return checkTimeMethod(doc);
@@ -451,7 +449,6 @@ public class FairTests {
         }
     }
 
-
     /**
      * Checks whether a DDI2.5 record contains provenance information.
      *
@@ -469,7 +466,8 @@ public class FairTests {
     }
 
     /**
-     * Fetch the OAI-PMH GetRecord XML and parse to extract the DDI codeBook element.
+     * Fetch the OAI-PMH GetRecord XML and parse to extract the DDI codeBook
+     * element.
      *
      * @param url The OAI-PMH GetRecord URL
      * @return The DDI codeBook Document
@@ -500,8 +498,9 @@ public class FairTests {
                 Node codeBookNode = (Node) ddiCodebookXPath.evaluate(oaiDoc, XPathConstants.NODE);
                 if (codeBookNode == null) {
                     logger.log(Level.WARNING, "No DDI codeBook found in OAI-PMH response from: {0}", url);
-                    throw new IOException("Failed to extract DDI codeBook from OAI-PMH response: No DDI codeBook found");
-                } 
+                    throw new IOException(
+                            "Failed to extract DDI codeBook from OAI-PMH response: No DDI codeBook found");
+                }
 
                 Document ddiDoc = documentBuilder.newDocument();
                 ddiDoc.appendChild(ddiDoc.importNode(codeBookNode, true));
@@ -513,8 +512,7 @@ public class FairTests {
         }
     }
 
-
-     // ============================================================================
+    // ============================================================================
     // ACCESS RIGHTS VALIDATION
     // ============================================================================
 
@@ -523,7 +521,7 @@ public class FairTests {
      *
      * @param ddiDoc The DDI document to check
      * @return Result of the check
-    */
+     */
     private Result checkAccessRights(Document ddiDoc) {
         Set<String> approvedValues = getApprovedAccessRights();
 
@@ -545,7 +543,8 @@ public class FairTests {
                     String trimmedVal = val.trim().toLowerCase();
                     logger.log(Level.INFO, "Trimmed value: [{0}]", trimmedVal);
 
-                    // check if any approved value is contained within the trimmed value (case-insensitive substring match)
+                    // check if any approved value is contained within the trimmed value
+                    // (case-insensitive substring match)
                     boolean match = approvedValues.stream()
                             .map(String::toLowerCase)
                             .anyMatch(trimmedVal::contains);
@@ -610,7 +609,7 @@ public class FairTests {
             logger.log(Level.SEVERE, "Error checking provenance information: {0}", e.getMessage());
             return Result.INDETERMINATE;
         }
-       
+
     }
 
     // ============================================================================
@@ -681,11 +680,16 @@ public class FairTests {
 
     /**
      * Validate ELSST keywords in the DDI document.
+     * Checks for keywords with vocab="ELSST" and vocabURI containing "elsst.cessda.eu",
+     * then verifies if any of those keywords match the ELSST API results for the given language code.
+     * 
+     * @param doc The DDI document to check
+     * @return Result of the validation
      */
     @SuppressWarnings("java:S2259")
     private Result validateElsstKeywords(Document doc) {
-        String languageCode = null;
         try {
+
             NodeList nodes;
             synchronized (keywordXPath) {
                 nodes = (NodeList) keywordXPath.evaluate(doc, XPathConstants.NODESET);
@@ -697,44 +701,62 @@ public class FairTests {
             }
 
             List<KeywordCandidate> candidates = new ArrayList<>();
+            String languageCode = null;
+
             for (int i = 0; i < nodes.getLength(); i++) {
                 Node node = nodes.item(i);
+
                 if (!(node instanceof Element element)) {
                     continue;
                 }
 
                 String vocabAttr = element.getAttribute("vocab");
                 String vocabURI = element.getAttribute("vocabURI");
-                languageCode = element.getAttribute("xml:lang");
+
+                // correct XML namespace-safe extraction
+                String lang = element.getAttributeNS(
+                        "http://www.w3.org/XML/1998/namespace",
+                        "lang");
+
+                if (languageCode == null && lang != null && !lang.isBlank()) {
+                    languageCode = lang;
+                }
+
                 String text = element.getTextContent().trim();
 
-                logger.log(Level.INFO, "Processing keyword node: text=''{0}'', vocab=''{1}'', vocabURI=''{2}'', lang=''{3}''",
-                        new Object[]{text, vocabAttr, vocabURI, languageCode});
+                logger.log(Level.INFO,
+                        "Processing keyword node: text='{0}', vocab='{1}', vocabURI='{2}', lang='{3}'",
+                        new Object[] { text, vocabAttr, vocabURI, lang });
 
-                if (!text.isEmpty()) {
-                    boolean hasVocab = ELSST_VOCAB_NAME.equals(vocabAttr);
-                    boolean hasVocabURI = vocabURI.contains(ELSST_URI_SUBSTRING);
+                if (text.isEmpty()) {
+                    continue;
+                }
 
-                    logger.log(Level.INFO, "Keyword ''{0}'': vocab={1}, vocabURI={2}", new Object[]{text, hasVocab, hasVocabURI});
+                boolean hasVocab = ELSST_VOCAB_NAME.equals(vocabAttr);
+                boolean hasVocabURI = vocabURI != null && vocabURI.contains(ELSST_URI_SUBSTRING);
 
-                    if (hasVocab && hasVocabURI) {
-                        candidates.add(new KeywordCandidate(text.trim(), true, true));
-                        logger.log(Level.INFO, "Candidate keyword found: ''{0}'' (has vocab and vocabURI) for language code: {1}", new Object[]{text, languageCode} );
-                    }
+                if (hasVocab && hasVocabURI) {
+                    candidates.add(new KeywordCandidate(text.trim(), true, true));
+
+                    logger.log(Level.INFO,
+                            "Candidate keyword found: '{0}'",
+                            text);
                 }
             }
 
             if (candidates.isEmpty()) {
-                logger.log(Level.INFO, "No keywords found with both vocab='ELSST' and vocabURI containing 'elsst.cessda.eu' for language code: {0}", languageCode);
+                logger.info("No valid ELSST candidates found");
                 return Result.FAIL;
             }
 
-            logger.log(Level.INFO, "Checking {0} candidate keyword(s) via ELSST API", candidates.size());
-
-            if (languageCode.isEmpty()) {
+            if (languageCode == null || languageCode.isBlank()) {
                 logger.info("No language code available for ELSST API validation");
                 return Result.INDETERMINATE;
             }
+
+            logger.log(Level.INFO,
+                    "Checking {0} candidate keyword(s) via ELSST API (lang={1})",
+                    new Object[] { candidates.size(), languageCode });
 
             return validateCandidatesAgainstElsstApi(candidates, languageCode);
 
@@ -763,7 +785,8 @@ public class FairTests {
 
             cachedPidSchemas.addAll(schemas);
 
-            logger.log(Level.INFO, "Fetched {0} approved PID schemas: {1}", new Object[]{schemas.size(), cachedPidSchemas});
+            logger.log(Level.INFO, "Fetched {0} approved PID schemas: {1}",
+                    new Object[] { schemas.size(), cachedPidSchemas });
             return cachedPidSchemas;
 
         } catch (IOException e) {
@@ -774,60 +797,64 @@ public class FairTests {
 
     /**
      * Validate ELSST keywords in the DDI document.
-     * @param candidates   List of candidate keywords with vocab and vocabURI attributes
+     * 
+     * @param candidates   List of candidate keywords with vocab and vocabURI
+     *                     attributes
      * @param languageCode Language code for ELSST API query
      * @return Result of the validation
      */
     private Result validateCandidatesAgainstElsstApi(List<KeywordCandidate> candidates, String languageCode) {
-    try {
+        try {
 
-        List<String> candidateTexts = candidates.stream()
-                .map(c -> c.text().trim().toUpperCase())
-                .toList();
+            List<String> candidateTexts = candidates.stream()
+                    .map(c -> c.text().trim().toUpperCase())
+                    .toList();
 
-        Set<String> elsstKeywords = fetchElsstKeywords(candidateTexts, languageCode);
+            Set<String> elsstKeywords = fetchElsstKeywords(candidateTexts, languageCode);
 
-        logger.info("ELSST keywords fetched from API: " + elsstKeywords);
+            logger.info("ELSST keywords fetched from API: " + elsstKeywords);
 
-        // Normalize API results (safe defensive normalization)
-        Set<String> normalisedElsst = elsstKeywords.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .map(String::toUpperCase)
-                .collect(Collectors.toSet());
+            // Normalize API results (safe defensive normalization)
+            Set<String> normalisedElsst = elsstKeywords.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .collect(Collectors.toSet());
 
-        logger.info("ELSST keywords normalised for comparison: " + normalisedElsst);
+            logger.info("ELSST keywords normalised for comparison: " + normalisedElsst);
 
-        for (KeywordCandidate candidate : candidates) {
+            for (KeywordCandidate candidate : candidates) {
 
-            String normalisedCandidate = candidate.text().trim().toUpperCase();
+                String normalisedCandidate = candidate.text().trim().toUpperCase();
 
-            logger.log(Level.INFO,
-                    "Checking candidate keyword against ELSST API results: ''{0}''",
-                    normalisedCandidate);
+                logger.log(Level.INFO,
+                        "Checking candidate keyword against ELSST API results: ''{0}''",
+                        normalisedCandidate);
 
-            if (normalisedElsst.contains(normalisedCandidate)) {
-                logger.info(Result.PASS
-                        + ": Keyword '" + candidate.text()
-                        + "' matches ELSST API result");
+                if (normalisedElsst.contains(normalisedCandidate)) {
+                    logger.info(Result.PASS
+                            + ": Keyword '" + candidate.text()
+                            + "' matches ELSST API result");
 
-                return Result.PASS;
+                    return Result.PASS;
+                }
             }
+
+            logger.info(Result.FAIL + ": No keywords match ELSST API results");
+            return Result.FAIL;
+
+        } catch (IOException e) {
+            logger.severe("Failed to fetch ELSST keywords: " + e.getMessage());
+            return Result.INDETERMINATE;
         }
-
-        logger.info(Result.FAIL + ": No keywords match ELSST API results");
-        return Result.FAIL;
-
-    } catch (IOException e) {
-        logger.severe("Failed to fetch ELSST keywords: " + e.getMessage());
-        return Result.INDETERMINATE;
     }
-}
 
     /**
-     * Fetch ELSST keywords from the ELSST API for the given list of keywords and language code.
-     * @param keywords     List of keyword texts to search for
-     * @param langCode     Language code for the API query (e.g. "en", "fr", etc.)
+     * Fetch ELSST keywords from the ELSST API for the given list of keywords and
+     * language code.
+     * 
+     * @param keywords List of keyword texts to search for
+     * @param langCode Language code for the API query (e.g. "en", "fr", etc.)
      * @return a set of ELSST keywords
      */
     private Set<String> fetchElsstKeywords(List<String> keywords, String langCode) throws IOException {
@@ -907,11 +934,10 @@ public class FairTests {
     // VOCABULARIES VALIDATION
     // ============================================================================
 
-
     /**
      * Check for CESSDA Topic Classification in the DDI document.
      *
-     * @param ddiDoc   The DDI document
+     * @param ddiDoc The DDI document
      * @return "pass", "fail", or "indeterminate"
      */
     private Result checkCessdaTopicClassification(Document ddiDoc) {
@@ -950,7 +976,7 @@ public class FairTests {
     /**
      * Check for DDI Analysis Unit in the DDI document.
      *
-     * @param ddiDoc   The DDI document
+     * @param ddiDoc The DDI document
      * @return "pass", "fail", or "indeterminate"
      */
     private Result checkAnalysisUnit(Document ddiDoc) {
@@ -963,7 +989,7 @@ public class FairTests {
                 }
 
                 Set<String> approvedTerms = getApprovedAnalysisUnitTerms();
-            
+
                 for (int i = 0; i < nodes.getLength(); i++) {
                     // Get only the direct text content, excluding child elements
                     StringBuilder description = new StringBuilder();
@@ -992,7 +1018,7 @@ public class FairTests {
     /**
      * Check for DDI Time Method in the DDI document.
      *
-     * @param ddiDoc   The DDI document
+     * @param ddiDoc The DDI document
      * @return "pass", "fail", or "indeterminate"
      */
     private Result checkTimeMethod(Document ddiDoc) {
@@ -1007,26 +1033,26 @@ public class FairTests {
                 return Result.FAIL;
             }
 
-             Set<String> approvedTerms = getApprovedTimeMethodTerms();
-             logger.log(Level.INFO, "Approved Time Method terms: {0}", approvedTerms);
-            
-                for (int i = 0; i < nodes.getLength(); i++) {
-                    // Get only the direct text content, excluding child elements
-                    StringBuilder description = new StringBuilder();
-                    Element timeMeth = (Element) nodes.item(i);
-                    for (Node child = timeMeth.getFirstChild(); child != null; child = child.getNextSibling()) {
-                        if (child.getNodeType() == Node.TEXT_NODE) {
-                            description.append(child.getTextContent());
-                        }
-                    }
-                    // Trim and check the description text
-                    String descriptionText = description.toString().trim();
-                    logger.log(Level.INFO, "Time Method description text: {0}", descriptionText);
-                    if (!descriptionText.isEmpty() && approvedTerms.contains(descriptionText)) {
-                        logger.log(Level.INFO, "Found Time Method term: {0}", descriptionText);
-                        return Result.PASS;
+            Set<String> approvedTerms = getApprovedTimeMethodTerms();
+            logger.log(Level.INFO, "Approved Time Method terms: {0}", approvedTerms);
+
+            for (int i = 0; i < nodes.getLength(); i++) {
+                // Get only the direct text content, excluding child elements
+                StringBuilder description = new StringBuilder();
+                Element timeMeth = (Element) nodes.item(i);
+                for (Node child = timeMeth.getFirstChild(); child != null; child = child.getNextSibling()) {
+                    if (child.getNodeType() == Node.TEXT_NODE) {
+                        description.append(child.getTextContent());
                     }
                 }
+                // Trim and check the description text
+                String descriptionText = description.toString().trim();
+                logger.log(Level.INFO, "Time Method description text: {0}", descriptionText);
+                if (!descriptionText.isEmpty() && approvedTerms.contains(descriptionText)) {
+                    logger.log(Level.INFO, "Found Time Method term: {0}", descriptionText);
+                    return Result.PASS;
+                }
+            }
 
             logger.log(Level.INFO, "No approved Time Method found in record");
             return Result.FAIL;
@@ -1039,7 +1065,7 @@ public class FairTests {
     /**
      * Check for DDI Sampling Procedure in the DDI document.
      *
-     * @param ddiDoc   The DDI document
+     * @param ddiDoc The DDI document
      * @return "pass", "fail", or "indeterminate"
      */
     private Result checkDdiSamplingProcedure(Document ddiDoc) {
@@ -1047,21 +1073,21 @@ public class FairTests {
             NodeList nodes;
             synchronized (samplingProcXPath) {
                 nodes = (NodeList) samplingProcXPath.evaluate(ddiDoc, XPathConstants.NODESET);
-            if (nodes == null || nodes.getLength() == 0) {
-                logger.info("No Sampling Procedure terms found");
-                return Result.FAIL;
-            }
-
-            Set<String> approvedTerms = getApprovedSamplingProcTerms();
-            for (int i = 0; i < nodes.getLength(); i++) {
-                String text = nodes.item(i).getTextContent().trim();
-                if (!text.isEmpty() && approvedTerms.contains(text)) {
-                    logger.log(Level.INFO, "Found DDI Sampling Procedure term: {0}", text);
-                    return Result.PASS;
+                if (nodes == null || nodes.getLength() == 0) {
+                    logger.info("No Sampling Procedure terms found");
+                    return Result.FAIL;
                 }
-            }
-            logger.log(Level.INFO, "No Sampling Procedure terms found in record");
-            return Result.FAIL;
+
+                Set<String> approvedTerms = getApprovedSamplingProcTerms();
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    String text = nodes.item(i).getTextContent().trim();
+                    if (!text.isEmpty() && approvedTerms.contains(text)) {
+                        logger.log(Level.INFO, "Found DDI Sampling Procedure term: {0}", text);
+                        return Result.PASS;
+                    }
+                }
+                logger.log(Level.INFO, "No Sampling Procedure terms found in record");
+                return Result.FAIL;
             }
         } catch (XPathExpressionException e) {
             logger.log(Level.SEVERE, "Error checking for Sampling Procedure terms {0}", e.getMessage());
@@ -1072,7 +1098,7 @@ public class FairTests {
     /**
      * Check for DDI Mode of Collection in the DDI document.
      *
-     * @param ddiDoc   The DDI document
+     * @param ddiDoc The DDI document
      * @return "pass", "fail", or "indeterminate"
      */
     private Result checkCollectionMode(Document ddiDoc) {
@@ -1086,7 +1112,7 @@ public class FairTests {
                 }
 
                 Set<String> approvedTerms = getApprovedCollectionModeTerms();
-                
+
                 for (int i = 0; i < nodes.getLength(); i++) {
                     Element collMode = (Element) nodes.item(i);
 
@@ -1114,7 +1140,6 @@ public class FairTests {
             return Result.INDETERMINATE;
         }
     }
-
 
     /**
      * Fetch and cache approved Topic Classification terms from CESSDA vocabulary.
@@ -1254,7 +1279,8 @@ public class FairTests {
     /**
      * Get HTTP response for the given request and body handler.
      */
-    private <T> HttpResponse<T> getHTTPResponse(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler) throws IOException {
+    private <T> HttpResponse<T> getHTTPResponse(HttpRequest request, HttpResponse.BodyHandler<T> bodyHandler)
+            throws IOException {
         HttpResponse<T> response;
         try {
             response = httpClient.send(request, bodyHandler);
@@ -1284,7 +1310,8 @@ public class FairTests {
 
         // don't want an exception for 404 here, just return empty set
         if (response.statusCode() != 200) {
-            logger.log(Level.WARNING, "Vocabulary API returned {0} for {1}", new Object[]{response.statusCode(), vocabType});
+            logger.log(Level.WARNING, "Vocabulary API returned {0} for {1}",
+                    new Object[] { response.statusCode(), vocabType });
             return Collections.emptySet();
         }
 
