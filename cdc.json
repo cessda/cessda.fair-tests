@@ -1,0 +1,188 @@
+{
+  "id": "22cfdebb26c9becc0c787e083962f326afb5bf493394219cb7d6bdd743dab212",
+  "abstract": "The survey studied Finnish perceptions of political parties, party membership, interest in politics, membership in various organisations, voting in the 1972 parliamentary and municipal elections, voting certainty, opinions about taxation, the government's role in the Finnish economy, the EEC, etc. Other topics included influence in decision making, perceptions of Finnish agriculture, and state grants. Background variables included which party R would vote for if the parliamentary elections were held at that time, number and age of household members, housing tenure and type of accomodation, R's economic activity, occupational status, basic education, vocational education, gender, age group, place of residence, electoral district, and annual gross income of the household.",
+  "classifications": [
+    {
+      "vocab": "OKM",
+      "vocabUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+      "id": "Social_sciences",
+      "term": "Social sciences"
+    },
+    {
+      "vocab": "CESSDA Topic Classification",
+      "vocabUri": "https://vocabularies.cessda.eu/urn/urn:ddi:int.cessda.cv:TopicClassification:4.2.3",
+      "id": "Political_behaviour_and_attitudes",
+      "term": "Political behaviour and attitudes"
+    }
+  ],
+  "code": "FSD",
+  "creators": [
+    {
+      "name": "Gallup Finland"
+    },
+    {
+      "name": "University of Helsinki. Department of Political Science"
+    }
+  ],
+  "dataAccess": "Restricted",
+  "dataAccessFreeTexts": [
+    "The dataset is (B) available for research, teaching and study."
+  ],
+  "dataCollectionPeriodStartdate": "1973-09-09",
+  "dataCollectionPeriodEnddate": "1973-10-17",
+  "dataCollectionYear": 1973,
+  "dataKindFreeTexts": [
+    {
+      "dataKindFreeText": "Quantitative"
+    }
+  ],
+  "fileLanguages": [
+    "fi",
+    "en"
+  ],
+  "keywords": [
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "elections",
+      "term": "elections"
+    },
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "parliamentary_elections",
+      "term": "parliamentary elections"
+    },
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "local_government_elections",
+      "term": "local government elections"
+    },
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "voting",
+      "term": "voting"
+    },
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "political_behaviour",
+      "term": "political behaviour"
+    },
+    {
+      "vocab": "ELSST",
+      "vocabUri": "https://elsst.cessda.eu/id",
+      "id": "political_attitudes",
+      "term": "political attitudes"
+    }
+  ],
+  "pidStudies": [
+    {
+      "agency": "FSD",
+      "pid": "FSD1000"
+    },
+    {
+      "agency": "URN",
+      "pid": "urn:nbn:fi:fsd:T-FSD1000"
+    },
+    {
+      "agency": "DOI",
+      "pid": "10.60686/t-fsd1000"
+    }
+  ],
+  "publicationYear": "1999-09-03",
+  "publisher": {
+    "abbr": "FSD",
+    "publisher": "Finnish Social Science Data Archive"
+  },
+  "publisherFilter": {
+    "abbr": "FSD",
+    "publisher": "Finnish Social Science Data Archive FSD"
+  },
+  "relatedPublications": [
+    {
+      "title": "Quinlan, Stephen (2012). The Conundrum of Youth Turnout. A Cross-national Examination of Generational Processes. Dublin, IE: University College Dublin, IE. Doctoral Dissertation.",
+      "holdings": [],
+      "publicationDate": "2013"
+    },
+    {
+      "title": "Wass, Hanna (2007). The effects of age, generation and period on turnout in Finland 1975-2003. Electoral Studies 26(3), 648-659.",
+      "holdings": [],
+      "publicationDate": "2007"
+    },
+    {
+      "title": "Wass, Hanna (2008). Generations and turnout: Generational effect in electoral participation in Finland. Helsinki: University of Helsinki. Department of Political Science. Acta Politica 35.",
+      "holdings": [],
+      "publicationDate": "2008"
+    }
+  ],
+  "samplingProcedureFreeTexts": [
+    "Probability: Multistage"
+  ],
+  "series": [
+    {
+      "names": [
+        "Finnish Voter Barometers"
+      ],
+      "descriptions": [
+        "The Finnish Voter Barometer surveys are commissioned by the major parties in the Parliament. In election years, other sponsors have also been involved. Up till 1988, the surveys were planned by Gallup Finland (TNS Gallup Ltd, Kantar) and the Department of Political and Economic Studies at the University of Helsinki in collaboration with the political parties. After 1988, the planning has been in the hands of Gallup Finland and the parties. From 1973 to 1990, the annual voter barometers were collected mainly with face-to-face interviews using structured questionnaires, 1000-2000 interviews/barometer. Since 1991, the data have been collected with GallupChannel (PC's installed in respondents' homes). No surveys were conducted in 1985 and 1989. Survey themes include voting behaviour, opinions on the government and the parties, and attitudes towards national political issues. In addition, respondents' economic expectations and political participation have often been studied, as well as their opinions on local politics, and the significance of the party leader to a party. Background variables have often included the social class of the respondent and the household head, economic activity of the household head, respondent's education, age, mother tongue, gender, party membership, political views, trade union membership, and family's annual income. There are also regional variables. Even though the variables are not always fully comparable from one survey to another, all kinds of comparisons over time are possible. The FSD collections cover data from 1973-2005."
+      ],
+      "uris": [
+        "https://services.fsd.tuni.fi/catalogue/series/6?lang=en"
+      ]
+    }
+  ],
+  "studyAreaCountries": [
+    {
+      "abbr": "FI",
+      "country": "Finland",
+      "searchField": "Finland"
+    }
+  ],
+  "studyNumber": "oai:fsd.uta.fi:FSD1000",
+  "studyUrl": "https://urn.fi/urn:nbn:fi:fsd:T-FSD1000",
+  "typeOfModeOfCollections": [
+    {
+      "vocab": "DDI Mode of Collection",
+      "vocabUri": "https://vocabularies.cessda.eu/urn/urn:ddi:int.ddi.cv:ModeOfCollection:5.0.1",
+      "id": "Interview.FaceToFace",
+      "term": "Face-to-face interview"
+    }
+  ],
+  "titleStudy": "Finnish Voter Barometer 1973",
+  "typeOfTimeMethods": [
+    {
+      "vocab": "DDI Time Method",
+      "vocabUri": "https://vocabularies.cessda.eu/urn/urn:ddi:int.ddi.cv:TimeMethod:1.2.3",
+      "id": "Longitudinal.TrendRepeatedCrossSection",
+      "term": "Longitudinal: Trend/Repeated cross-section"
+    }
+  ],
+  "typeOfSamplingProcedures": [
+    {
+      "vocab": "DDI Sampling Procedure",
+      "vocabUri": "https://vocabularies.cessda.eu/urn/urn:ddi:int.ddi.cv:SamplingProcedure:2.0.2",
+      "id": "Probability.Multistage"
+    }
+  ],
+  "unitTypes": [
+    {
+      "vocab": "DDI Analysis Unit",
+      "vocabUri": "https://vocabularies.cessda.eu/urn/urn:ddi:int.ddi.cv:AnalysisUnit:2.1.3",
+      "id": "Individual",
+      "term": "Individual"
+    }
+  ],
+  "universe": {
+    "inclusion": "Finnish population aged 18 or over",
+    "exclusion": "the Åland Islands"
+  },
+  "lastModified": "2026-03-19T23:31:24Z",
+  "langAvailableIn": [
+    "fi",
+    "en"
+  ],
+  "studyXmlSourceUrl": "http://services.fsd.uta.fi/v0/oai?verb=GetRecord&identifier=oai%3Afsd.uta.fi%3AFSD1000&metadataPrefix=oai_ddi25"
+}

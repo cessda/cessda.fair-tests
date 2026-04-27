@@ -3,190 +3,132 @@
 [![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_silver.png)](https://api.eu.badgr.io/public/assertions/SGiodTQYQPGTwKuZbpUiXA "SQAaaS silver badge achieved")
 
 This repository contains the source code for CESSDA community-specific FAIR
-tests that validate DDI2.5 XML records against FAIR data principles.
+(Findable, Accessible, Interoperable, Reusable) tests. Given a URL that
+returns a metadata record, it fetches the response, detects its format,
+and evaluates one or more predefined compliance tests, returning a
+three-valued result: `PASS`, `FAIL`, or `INDETERMINATE`.
 
 ## Overview
 
-- The FairTests utility provides validation tests for DDI2.5 records
-- Controlled vocabulary terms are fetched from the CESSDA vocabulary service
-- Terms are cached in memory to improve performance and reduce API calls
-- If a vocabulary service is unavailable, some tests fall back to default values
-- Empty or whitespace-only values are treated as absent
-- All text content is trimmed of leading and trailing whitespace before
-    comparison
+The codebase follows a clean separation of concerns:
 
-### 1. Access Rights Validation
+- One **orchestrator** class fetches the URL, sniffs the format, and
+  routes to the correct parser.
+- Three **parser** classes contain all format-specific logic.
+- One **vocabulary service** (not documented here) supplies approved
+  term sets and validates ELSST keywords.
 
-Checks whether records contain approved Access Rights terms from the CESSDA
-vocabulary (e.g., "Open", "Restricted").
+```text
+FairTests (orchestrator)
+│
+├── FormatSniffer          — detects XML / JSON / HTML
+│
+├── XmlParser              — DDI Codebook 2.5 XML
+├── CdcJsonParser          — CDC-schema JSON objects
+└── HtmlParser             — HTML pages with a JSON-LD block
+         └── (delegates to CdcJsonParser)
+```
 
-### 2. PID Schema Validation
+All three parsers implement the `FormatParser` interface:
 
-Validates that records use approved Persistent Identifier schemas from the
-CESSDA vocabulary (e.g., DOI, Handle, URN, ARK).
+```java
+Result runTest(TestType test, InputStream inputStream,
+               VocabularyService vocabulary) throws IOException;
+```
 
-### 3. ELSST Keyword Validation
+## Supported formats
 
-Verifies that records contain keywords from the ELSST
-(European Language Social Science Thesaurus) controlled vocabulary.
+| Format | Notes |
+| -------- | ------- |
+| DDI Codebook 2.5 XML | OAI-PMH envelope is handled transparently. |
+| CDC-schema JSON | Root object must contain an `id` field. |
+| HTML with JSON-LD | Must embed a `<script id="json-ld" type="application/ld+json">` block. |
 
-### 4. CESSDA Topic Classification Vocabulary
+## Supported tests
 
-Verifies that the record uses the Topic Classification vocabulary in the
-appropriate attribute.
-
-### 5. DDI Analysis Unit
-
-Verifies that the record uses DDI Analysis Unit vocabulary in the
-appropriate attributes.
-
-### 6. DDI Collection Mode
-
-Verifies that the record uses the DDI Collection Mode vocabulary in the
-appropriate attribute.
-
-### 7. DDI Time Method
-
-Verifies that the record uses the DDI Time Method vocabulary in the
-appropriate attribute.
-
-### 8. DDI Sampling Procedure
-
-Verifies that the record uses the DDI Sampling Procedure vocabulary in the
-appropriate attribute.
-
-### 9. Provenance Information
-
-Verifies that the record contains provenance metadata elements.
+| `TestType` constant | What is checked |
+| ---------------------- | ---------------------------------------------------------------- |
+| `ACCESS_RIGHTS` | Approved access rights term is present. |
+| `PID` | Persistent identifier schema is from an approved list. |
+| `ELSST_KEYWORDS` | At least one ELSST controlled vocabulary keyword is present and valid. |
+| `TOPIC_CLASS` | A CESSDA topic classification term is present. |
+| `DDI_ANALYSIS_UNIT` | A DDI analysis unit vocabulary term is present. |
+| `DDI_COLLECTION_MODE` | A DDI collection mode vocabulary term is present. |
+| `DDI_TIME_METHOD` | A DDI time method vocabulary term is present. |
+| `DDI_SAMPLEPROC` | A DDI sampling procedure term is present. |
+| `PROVENANCE` | Publisher, creator, or funding information is present. |
 
 ## Prerequisites
 
-Java 21 or greater is required to build and run this application.
+Java 17 or greater is required to build and run this application.
 
-## Quick Start
+## Quick start
 
-1. Check prerequisites and install any required software.
-1. Clone the repository to your local workspace.
-1. Build the application using `mvn clean verify`.
-1. Run the application using one of the following methods:
+### As a library
 
-### Using Maven Exec Plugin
+```java
+FairTests fairTests = new FairTests();
+URI url = new URI("https://example.org/api/studies/12345");
 
-```bash
-mvn -Dexec.mainClass=eu.cessda.fairtests.FairTests \
-    -Dexec.args="<test-type> <CDC URL>" \
-    org.codehaus.mojo:exec-maven-plugin:3.1.0:java
+Result result = fairTests.containsApprovedAccessRights(url);
+// or
+Result result = fairTests.runTest(TestType.PID, url);
 ```
 
-### Using Executable JAR
+### From the command line
 
-Run a FAIR test by making a POST request to the `/assess/test` endpoint:
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/<test-name> \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"<https://example>"}'
+```text
+java -cp fairtests.jar eu.cessda.fairtests.FairTests <test-type> <url>
 ```
 
-## Example Usage
+`<test-type>` must match the `getTestName()` of a `TestType` constant.
+The process exits with code `0` for `PASS` and `1` for any other result.
 
-### Test Access Rights
+## Result values
 
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/access-rights \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
+| Value | Meaning |
+| ------- | --------- |
+| `PASS` | The record satisfies the test criteria. |
+| `FAIL` | The record does not satisfy the test criteria. |
+| `INDETERMINATE` | The test could not be completed (network error, unsupported format, parse error, missing required field). |
+
+## Adding new tests
+
+As well as adding rules for the new test(s) to
+[CdcJsonParser..java](api/src/main/java/eu/cessda/fairtests/CdcJsonParser.java)
+and [XmlParser.java](api/src/main/java/eu/cessda/fairtests/XmlParser.java)
+you need to:
+
+- extend the runTest switch statement
+- extend the [TestType](api/src/main/java/eu/cessda/fairtests/TestType.java) enumeration
+- add Unit tests in [FairTestsTests](api/src/test/java/eu/cessda/fairtests/FairTestsTest.java)
+- add an API descriptor file in the `resources/static directory`
+
+### JSON rules
+
+In many cases, a new test just requires the creation of a rule to define which
+fields to inspect:
+
+```java
+TestType.NEW_TEST,
+new ValidationRule(
+    "someArray",
+    "someField",
+    VocabularyService::getSomething,
+    MatchType.EXACT,
+    "Some Label"
+)
 ```
 
-### Test PID Schema
+### XML rules
 
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/pid \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
+In many cases, a new test just requires the creation of a rule to define which
+fields to inspect:
+
+```java
+TestType.X,
+new ValidationRule("//ddi:somePath", false, null, vocab::getX, EXACT, "X")
 ```
-
-### Test ELSST Keywords
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/elsst-keywords \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test CESSDA Topic Classification vocabulary
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/topic-class \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test DDI Analysis Unit vocabulary
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-analysis-unit \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test DDI Collection Mode vocabulary
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-collection-mode \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test DDI Time Method vocabulary
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-time-method \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test DDI Sampling Procedure vocabulary
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/ddi-sampleproc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test Provenance information
-
-```bash
-curl -X POST https://fair-tests.cessda.eu/assess/test/provenance \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resource_identifier":"https://datacatalogue.cessda.eu/oai-pmh/v0/oai?verb=GetRecord&metadataPrefix=oai_ddi25&identifier=1234567890"}'
-```
-
-### Test Type Options
-
-- `access-rights` - Validate Access Rights terms
-- `pid` - Validate Persistent Identifier schemas
-- `elsst-keywords` - Validate ELSST use of controlled vocabulary keywords
-- `topic-class` - Validate use of CESSDA Topic Classification vocabulary terms
-- `ddi-analysis-unit` - Validate use of DDI Analysis Unit vocabulary terms
-- `ddi-collection-mode` - Validate use of DDI Collection Mode vocabulary terms
-- `ddi-time-method` - Validate use of DDI Time Method vocabulary terms
-- `ddi-sampleproc` - Validate use of DDI Sampling Procedure vocabulary terms
-- `provenance` - Validate Provenance
-
-### URL Requirements
-
-The URL must return DDI2.5 XML
 
 #### Request Format
 
@@ -242,21 +184,16 @@ cessda.fair-tests
 ├── mvnw.cmd
 ├── pom.xml                                     # Parent POM
 ├── README.md
-└── Test_Logic.md                               # Contains detailled description of how the tests work
+├── README-CdcParser.md
+├── README-FairTests.md
+├── README-HtmlParser.md
+├── README-TestLogic.md
+└── README-XmlParser.md                         
 ```
 
 ## How It Works
 
-See [Test Logic](Test_Logic.md) for details.
-
-## Technical Details
-
-- **Language**: Java 17
-- **Concurrency**: Uses virtual threads for parallel ELSST API queries
-- **Timeouts**: 10-second connect timeout, 30-second request timeout
-- **Standards**: DDI 2.5 metadata via OAI-PMH, CESSDA controlled vocabularies,
-    DDI controlled vocabularies
-- **Caching**: Vocabulary terms are cached to reduce API calls
+See [Test Logic](README-TestLogic.md) for details.
 
 ## Dependencies
 
@@ -296,16 +233,6 @@ versions of all Spring dependencies. The parent POM coordinates are:
 - **Spring Boot Maven Plugin** (4.0.1) - Packages the application as an
     executable JAR with embedded dependencies
 
-### Shared Components
-
-The consolidated FairTests class eliminates code duplication by sharing:
-
-- HTTP client and request handling
-- XML parsing and XPath evaluation
-- Document fetching from OAI-PMH endpoint
-- URL parsing and record identifier extraction
-- Vocabulary API integration
-
 ## API Endpoints
 
 The application integrates with the following services and hosted vocabularies:
@@ -319,16 +246,6 @@ The application integrates with the following services and hosted vocabularies:
 - **Colection Mode Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/ModeOfCollection/5.0.0?languageVersion=en-5.0.0&format=json`
 - **PID Types Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/CessdaPersistentIdentifierTypes/1.0.0`
 - **Sampling Procedure Vocabulary**: `https://vocabularies.cessda.eu/v2/vocabularies/SamplingProcedure/2.0.1?languageVersion=en-2.0.1&format=json`
-
-## Adding a new test
-
-As well as adding the methods to run the new test to
-[FairTests.java](api/src/main/java/eu/cessda/fairtests/FairTests.java) you need to:
-
-- extend the runTest switch statement
-- extend the [TestType](api/src/main/java/eu/cessda/fairtests/TestType.java) enumeration
-- add Unit tests in [FairTestsTests](api/src/test/java/eu/cessda/fairtests/FairTestsTest.java)
-- add an API descriptor file in the resources/static directory
 
 ## Building from Source
 
@@ -363,6 +280,20 @@ mvn clean install javadoc:javadoc
 ```
 
 Documentation will be available in `target/site/apidocs/`
+
+## Component documentation
+
+For detailed information about each class, see the individual README
+files:
+
+- [README-FairTests.md](README-FairTests.md) — orchestrator, HTTP
+  fetching, CLI entry point, format routing.
+- [README-XmlParser.md](README-XmlParser.md) — DDI Codebook 2.5 XML
+  parsing, XPath-based rule engine, extraction strategies.
+- [README-CdcJsonParser.md](README-CdcJsonParser.md) — CDC-schema JSON
+  parsing, data-driven rule engine, flexible JSON extraction.
+- [README-HtmlParser.md](README-HtmlParser.md) — HTML pre-processor,
+  JSON-LD block extraction, delegation to `CdcJsonParser`.
 
 ## Contributing
 

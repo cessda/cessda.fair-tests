@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 CESSDA ERIC (support@cessda.eu)
+ * SPDX-FileCopyrightText: 2026 CESSDA ERIC (support@cessda.eu)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -17,10 +17,11 @@
 
 package eu.cessda.fairtests.server;
 
-import eu.cessda.fairtests.FairTests;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+
+import eu.cessda.fairtests.FairTests;
 
 /**
  * Main class to start the Fair Tests application.

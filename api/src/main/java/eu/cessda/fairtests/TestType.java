@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 CESSDA ERIC (support@cessda.eu)
+ * SPDX-FileCopyrightText: 2026 CESSDA ERIC (support@cessda.eu)
  *
  * SPDX-License-Identifier: Apache-2.0
  *

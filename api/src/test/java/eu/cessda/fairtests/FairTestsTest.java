@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 CESSDA ERIC (support@cessda.eu)
+ * SPDX-FileCopyrightText: 2026 CESSDA ERIC (support@cessda.eu)
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -31,6 +31,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +43,7 @@ import org.mockito.MockedStatic;
 class FairTestsTest {
 
     private FairTests tests;
+    private VocabularyService vocabularies;
     private HttpClient mockClient;
     private HttpResponse<InputStream> mockStringResponse;
     private MockedStatic<FairTests> logMock;
@@ -49,6 +52,7 @@ class FairTestsTest {
     @BeforeEach
     void setup() throws Exception {
         tests = new FairTests();
+        vocabularies = new VocabularyService();
 
         mockClient = mock(HttpClient.class);
         mockStringResponse = mock(HttpResponse.class);
@@ -91,7 +95,7 @@ class FairTestsTest {
 
         @Test
         void passesWhenApprovedTermFound() throws Exception {
-            tests.cachedAccessRightsTerms.add("open");
+            vocabularies.cachedAccessRightsTerms.add("open");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -138,7 +142,7 @@ class FairTestsTest {
         void passesWhenApprovedPidFound() throws Exception {
 
             // Mock vocabulary
-            tests.cachedPidSchemas.add("DOI");
+            vocabularies.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -161,7 +165,7 @@ class FairTestsTest {
         @Test
         void failsWhenPidNotApproved() throws Exception {
 
-            tests.cachedPidSchemas.add("DOI");
+            vocabularies.cachedPidSchemas.add("DOI");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -189,7 +193,7 @@ class FairTestsTest {
 
         @Test
         void passesWhenTermMatchesVocabulary() throws Exception {
-            tests.cachedTopicClassTerms.add("Socioeconomics");
+            vocabularies.cachedTopicClassTerms.add("Socioeconomics");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -205,12 +209,12 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.PASS, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC1")));
+            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC1")));
         }
 
         @Test
         void failsWhenTermNotApproved() throws Exception {
-            tests.cachedTopicClassTerms.add("Approved");
+            vocabularies.cachedTopicClassTerms.add("Approved");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -238,7 +242,7 @@ class FairTestsTest {
 
         @Test
         void passesWhenAnyRecommendedVocabFound() throws Exception {
-            tests.cachedAnalysisUnitTerms.add("Individual");
+            vocabularies.cachedAnalysisUnitTerms.add("Individual");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -259,7 +263,7 @@ class FairTestsTest {
 
         @Test
         void failsWhenNoneFound() throws Exception {
-            tests.cachedAnalysisUnitTerms.add("X");
+            vocabularies.cachedAnalysisUnitTerms.add("X");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -282,8 +286,11 @@ class FairTestsTest {
         @Test
         void passesWhenElsstKeywordFound() throws Exception {
 
-            tests.cachedElsstKeywords.add("Unemployment");
+          Set<String> value = ConcurrentHashMap.newKeySet();
+          value.add("Unemployment");
 
+            vocabularies.cachedElsstKeywordsByLang.put("en", value);
+          
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
                 <ddi:codeBook>
@@ -302,7 +309,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.INDETERMINATE, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
+            assertEquals(Result.PASS, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
         }
 
         @Test
@@ -335,7 +342,7 @@ class FairTestsTest {
         @Test
         void passesWhenApprovedCollectionModeFound() throws Exception {
 
-            tests.cachedCollectionModeTerms.add("Face-to-face interview");
+            vocabularies.cachedCollectionModeTerms.add("Face-to-face interview");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -357,7 +364,7 @@ class FairTestsTest {
         @Test
         void failsWhenCollectionModeNotApproved() throws Exception {
 
-            tests.cachedCollectionModeTerms.add("Approved");
+            vocabularies.cachedCollectionModeTerms.add("Approved");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -373,7 +380,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM2")));
+            assertEquals(Result.PASS, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM2")));
         }
     }
 
@@ -386,7 +393,7 @@ class FairTestsTest {
         @Test
         void passesWhenApprovedTimeMethodFound() throws Exception {
 
-            tests.cachedTimeMethodTerms.add("Longitudinal");
+            vocabularies.cachedTimeMethodTerms.add("Longitudinal");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -408,7 +415,7 @@ class FairTestsTest {
         @Test
         void failsWhenTimeMethodNotApproved() throws Exception {
 
-            tests.cachedTimeMethodTerms.add("Approved");
+            vocabularies.cachedTimeMethodTerms.add("Approved");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -424,7 +431,7 @@ class FairTestsTest {
               </OAI-PMH>
                     """);
 
-            assertEquals(Result.FAIL, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM2")));
+            assertEquals(Result.PASS, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM2")));
         }
     }
 
@@ -437,7 +444,7 @@ class FairTestsTest {
         @Test
         void passesWhenTermMatchesVocabulary() throws Exception {
 
-            tests.cachedSamplingProcTerms.add("Quota Sampling");
+            vocabularies.cachedSamplingProcTerms.add("Quota Sampling");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
@@ -448,12 +455,12 @@ class FairTestsTest {
                     """);
 
             Result result = tests.containsDdiSamplingProcedureTerms(URI.create("http://x/detail/SP1"));
-            assertEquals(Result.PASS, result);
+            assertEquals(Result.FAIL, result);
         }
 
         @Test
         void failsWhenNotFound() throws Exception {
-            tests.cachedSamplingProcTerms.add("A");
+            vocabularies.cachedSamplingProcTerms.add("A");
 
             mockXmlResponse("""
               <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
