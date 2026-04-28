@@ -1,5 +1,8 @@
 # FAIR Test Implementation Logic
 
+DO NOT RENAME THIS FILE (from Test_Logic.md) as it is referenced by
+many items in [FAIR Wizard](https://ostrails-fair.fair-wizard.com/wizard/projects?sort=updatedAt,desc&userUuids=f74122d1-1661-40ea-b6c9-92ee7a93bb6d&projectTags=CESSDA)
+
 Each test supports three input formats:
 
 - **DDI Codebook 2.5 XML** — handled by `XmlParser`, including records

@@ -187,13 +187,13 @@ cessda.fair-tests
 ├── README-CdcParser.md
 ├── README-FairTests.md
 ├── README-HtmlParser.md
-├── README-TestLogic.md
-└── README-XmlParser.md                         
+├── README-XmlParser.md
+└── Test_Logic.md                         
 ```
 
 ## How It Works
 
-See [Test Logic](README-TestLogic.md) for details.
+See [Test Logic](Test_Logic.md) for details.
 
 ## Dependencies
 
