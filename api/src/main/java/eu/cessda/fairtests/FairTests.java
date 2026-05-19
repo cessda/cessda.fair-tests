@@ -86,7 +86,6 @@ import org.apache.commons.cli.ParseException;
 public class FairTests {
 
     private static final Logger logger = Logger.getLogger(FairTests.class.getName());
-
     private static final String HTTP_HEADER_ACCEPT = "Accept";
 
     // -------------------------------------------------------------------------
@@ -114,7 +113,6 @@ public class FairTests {
      */
     @SuppressWarnings("java:S106")
     public static void main(String[] args) throws ParseException, URISyntaxException {
-        logger.setLevel(Level.INFO);
 
         @SuppressWarnings("deprecation")
         HelpFormatter formatter = new HelpFormatter();
@@ -140,7 +138,7 @@ public class FairTests {
         FairTests fairTests = new FairTests();
         Result result = fairTests.runTest(test, url);
 
-        logger.info("Result: " + result);
+        logInfo("Result: %s", result);
         System.out.println(result);
         System.exit(Result.PASS == result ? 0 : 1);
     }
@@ -175,22 +173,20 @@ public class FairTests {
             HttpResponse<InputStream> response = sendRequest(request);
 
             if (response.statusCode() != 200) {
-                logger.warning("HTTP {0} fetching {1}" + new Object[]{response.statusCode(), url});
+                logWarning("HTTP {0} fetching {1}", response.statusCode(), url);
                 return Result.INDETERMINATE;
             }
 
             // Sniff the format and get a rewound stream safe to pass to any parser
             FormatSniffer.SniffResult sniffed = sniffer.wrap(response.body());
-            logger.info("Detected format {0} at {1}" +
-                    new Object[]{sniffed.format(), url});
+            logInfo("Detected format %s at %s", sniffed.format(), url);
 
             FormatParser parser = switch (sniffed.format()) {
                 case XML                       -> xmlParser;
                 case JSON_OBJECT               -> cdcJsonParser; // JSON_ARRAY is not handled at present
                 case HTML                      -> htmlParser; // HTML is treated as a special case: extract the JSON-LD block and pass it to a JSON parser
                 default -> {
-                    logger.warning("Unsupported format {0} returned by {1}" +
-                            new Object[]{sniffed.format(), url});
+                    logWarning("Unsupported format %s returned by %s", sniffed.format(), url);
                     yield null;
                 }
             };
@@ -200,7 +196,7 @@ public class FairTests {
             return parser.runTest(test, sniffed.stream(), vocabulary);
 
         } catch (IOException e) {
-            logger.warning("I/O error running test {0} against {1}" + new Object[]{test, url});
+            logSevere("I/O error running test %s against %s: %s", test, url, e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -272,5 +268,44 @@ public class FairTests {
         return Arrays.stream(TestType.values())
                 .map(TestType::getTestName)
                 .collect(Collectors.joining(", "));
+    }
+
+
+    // Logging helpers to avoid unnecessary string formatting when the log level is not enabled
+
+    /**
+     * Logs an info message if the log level is enabled.
+     * 
+     * @param message the message to log
+     * @param args the arguments for the message
+     */
+     static void logInfo(String message, Object... args) {
+        if (logger.isLoggable(Level.INFO)) {
+            logger.info(args.length == 0 ? message : String.format(message, args));
+        }
+    }
+
+     /** 
+     * Logs a warning message if the log level is enabled.
+     * 
+     * @param message the message to log
+     * @param args the arguments for the message
+     */
+    static void logWarning(String message, Object... args) {
+        if (logger.isLoggable(Level.WARNING)) {
+            logger.warning(args.length == 0 ? message : String.format(message, args));
+        }
+    }
+
+    /** 
+     * Logs a severe message if the log level is enabled.
+     * 
+     * @param message the message to log
+     * @param args the arguments for the message
+     */
+    static void logSevere(String message, Object... args) {
+        if (logger.isLoggable(Level.SEVERE)) {
+            logger.severe(args.length == 0 ? message : String.format(message, args));
+        }
     }
 }

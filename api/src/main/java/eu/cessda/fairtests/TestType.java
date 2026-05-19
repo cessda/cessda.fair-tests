@@ -21,25 +21,33 @@ package eu.cessda.fairtests;
  * Enumeration of the different types of FAIR tests.
  */
 public enum TestType {
-    // A – Accessible
-    /**
-     * Checks whether records contain approved Access Rights terms
-     */
-    ACCESS_RIGHTS("access-rights", "FM_Gen2-MI-A1.2_M_CARV"),
-
-    // F – Findable
-    /**
-     * Checks whether records contain a Persistent Identifier
-     */
+    // F - Findable
+    /** Checks whether records contain a Persistent Identifier */
     PID("pid", "FT-F1-PID_M_CESSDA"),
+    /** Checks whether records contain metadata that is grounded in a standard vocabulary */
+    GROUNDED_METADATA("grounded-metadata", "FT-F2B_M_GM"),
+    /** Checks whether records contain metadata that is indexed in a searchable catalogue */
+    SEARCHABLE ("searchable", "FT-F4_M_SE"),
+    /** Checks whether records contain structured metadata */
+    STRUCTURED_METADATA("structured-metadata", "FT-F2A_M_SM"),
 
-    // I – Interoperable
+    // A - Accessible
+    /** Checks whether records contain approved Access Rights terms */
+    ACCESS_RIGHTS("access-rights", "FM_Gen2-MI-A1.2_M_CARV"),
+    /** Checks whether records contain a retrievable protocol */
+    RETRIEVABLE_PROTOCOL("retrievable-protocol", "FT_Gen2_MI_A1.1_M_RP"),
+
+    // I - Interoperable
     /** Checks whether records contain ELSST keywords */
     ELSST_KEYWORDS("elsst-keywords", "FT_I2_M_CEK"),
+    /** Checks whether records contain at least one resolvable semantic vocabulary URI associated with metadata terms. */
+    FAIR_VOCABULARY("fair-vocabulary", "FT_I2A_M_FV"),
+    /** Checks whether records contain metadata that is expressed in a formal language (weak variant). */
+    FORMAL_KR_LANGUAGE("formal-kr-language", "FT_I1A_M_FKRL"),
     /** Checks whether records contain DDI topic classifications */
     TOPIC_CLASS("topic-class", "FT_Gen2-MI-I2A_M_CTV"),
 
-    // R – Reusable
+    // R - Reusable
     /** Checks whether records contain approved DDI terms for various fields */
     DDI_ANALYSIS_UNIT("ddi-analysis-unit", "FT_Gen2-MI-I2A_M_DAUV"),
     /** Checks whether records contain approved DDI terms for various fields */

@@ -36,13 +36,14 @@ The following `TestType` values are handled:
 - `ELSST_KEYWORDS` — finds all `//ddi:keyword` elements, filters those
   with `vocab="ELSST"` and a `vocabURI` containing `"elsst"`, then
   validates the collected terms via `VocabularyService`.
+- `STRUCTURED_METADATA` — XXX
 
 ## Internal design
 
 ### Enumerations
 
 | Enum | Values | Purpose |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | `ExtractionStrategy` | `DIRECT_TEXT`, `FULL_TEXT`, `ATTRIBUTE` | Determines which part of an XML node yields the candidate string. `DIRECT_TEXT` concatenates only immediate text-node children, ignoring nested elements. `FULL_TEXT` uses `getTextContent()` to include all descendant text. `ATTRIBUTE` reads a named attribute from the element. |
 | `MatchType` | `EXACT`, `CONTAINS` | Controls how normalised candidate strings are compared against the approved term set. |
 

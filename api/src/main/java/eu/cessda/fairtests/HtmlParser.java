@@ -20,8 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * {@link FormatParser} implementation for HTML responses that embed a JSON-LD
@@ -54,8 +52,6 @@ import java.util.logging.Logger;
  * so there is no duplication of vocabulary-matching logic.</p>
  */
 public class HtmlParser implements FormatParser {
-
-    private static final Logger logger = Logger.getLogger(HtmlParser.class.getName());
 
     /** Opening tag that marks the start of the JSON-LD block (case-insensitive match applied at runtime). */
     private static final String JSON_LD_OPEN_TAG  = "<script id=\"json-ld\" type=\"application/ld+json\">";
@@ -90,9 +86,7 @@ public class HtmlParser implements FormatParser {
             return Result.INDETERMINATE;
         }
 
-        logger.log(Level.INFO,
-                "JSON-LD block extracted ({0} chars), delegating to CdcJsonParser",
-                jsonBlock.length());
+        FairTests.logInfo("Extracted JSON-LD content: %s", jsonBlock);
 
         try (InputStream jsonStream = toStream(jsonBlock)) {
             return cdcJsonParser.runTest(test, jsonStream, vocabulary);
@@ -115,7 +109,7 @@ public class HtmlParser implements FormatParser {
      */
     private String extractJsonLdBlock(String html) {
         if (html == null || html.isBlank()) {
-            logger.warning("HTML content is empty — cannot extract JSON-LD block");
+            FairTests.logWarning("Received HTML content: %s", html);
             return null;
         }
 
@@ -124,8 +118,7 @@ public class HtmlParser implements FormatParser {
         // Locate the opening <script id="json-ld" …> tag
         int openTagStart = lower.indexOf(JSON_LD_OPEN_TAG.toLowerCase(java.util.Locale.ROOT));
         if (openTagStart == -1) {
-            logger.warning(
-                    "No <script id=\"json-ld\" type=\"application/ld+json\"> tag found in HTML response");
+            FairTests.logWarning("No <script id=\"json-ld\" type=\"application/ld+json\"> tag found in HTML response");
             return null;
         }
 
@@ -136,7 +129,7 @@ public class HtmlParser implements FormatParser {
         int closeTagStart = lower.indexOf(JSON_LD_CLOSE_TAG.toLowerCase(java.util.Locale.ROOT),
                 contentStart);
         if (closeTagStart == -1) {
-            logger.warning(
+            FairTests.logWarning(
                     "Found JSON-LD <script> open tag but no matching </script> close tag");
             return null;
         }
@@ -144,7 +137,7 @@ public class HtmlParser implements FormatParser {
         String jsonBlock = html.substring(contentStart, closeTagStart).trim();
 
         if (jsonBlock.isEmpty()) {
-            logger.warning("JSON-LD <script> block is present but contains no content");
+            FairTests.logWarning("JSON-LD <script> block is present but contains no content");
             return null;
         }
 

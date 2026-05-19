@@ -33,8 +33,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -55,8 +53,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * </p>
  */
 public class VocabularyService {
-
-    private static final Logger logger = Logger.getLogger(VocabularyService.class.getName());
 
     // -------------------------------------------------------------------------
     // Vocabulary endpoint URLs
@@ -114,18 +110,18 @@ public class VocabularyService {
      */
     public Set<String> getApprovedAccessRightsTerms() {
         if (!cachedAccessRightsTerms.isEmpty()) return cachedAccessRightsTerms;
-        logger.info("Fetching approved Access Rights terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved Access Rights terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(ACCESS_VOCAB_URL, "AccessRights");
             if (terms.isEmpty()) {
-                logger.info("Using default Access Rights terms due to empty vocabulary");
+                FairTests.logInfo("Using default Access Rights terms due to empty vocabulary");
                 return defaultAccessRightsTerms();
             }
             cachedAccessRightsTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched approved Access Rights terms: {0}", cachedAccessRightsTerms);
+            FairTests.logInfo("Fetched approved Access Rights terms: %s", cachedAccessRightsTerms);
             return cachedAccessRightsTerms;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch AccessRights vocabulary: {0}", e.getMessage());
+            FairTests.logSevere("Failed to fetch AccessRights vocabulary: %s", e.getMessage());
             return defaultAccessRightsTerms();
         }
     }
@@ -136,16 +132,15 @@ public class VocabularyService {
      */
     public Set<String> getApprovedPidSchemas() {
         if (!cachedPidSchemas.isEmpty()) return cachedPidSchemas;
-        logger.info("Fetching approved PID schemas from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved PID schemas from CESSDA vocabulary");
         try {
             Set<String> schemas = fetchVocabularyTerms(PID_VOCAB_URL, "PID");
             if (schemas.isEmpty()) return defaultPidSchemas();
             cachedPidSchemas.addAll(schemas);
-            logger.log(Level.INFO, "Fetched {0} approved PID schemas: {1}",
-                    new Object[]{schemas.size(), cachedPidSchemas});
+            FairTests.logInfo("Fetched %s approved PID schemas: %s", schemas.size(), cachedPidSchemas);
             return cachedPidSchemas;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch PID vocabulary: {0}", e.getMessage());
+            FairTests.logSevere("Failed to fetch PID vocabulary: %s", e.getMessage());
             return defaultPidSchemas();
         }
     }
@@ -156,15 +151,15 @@ public class VocabularyService {
      */
     public Set<String> getApprovedTopicClassTerms() {
         if (!cachedTopicClassTerms.isEmpty()) return cachedTopicClassTerms;
-        logger.info("Fetching approved Topic Classification terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved Topic Classification terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(TOPIC_CLASS_VOCAB_URL, "TopicClassification");
             if (terms.isEmpty()) return Collections.emptySet();
             cachedTopicClassTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched {0} approved Topic Classification terms", terms.size());
+            FairTests.logInfo("Fetched %d approved Topic Classification terms", terms.size());
             return cachedTopicClassTerms;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch Topic Classification vocabulary", e);
+            FairTests.logSevere("Failed to fetch Topic Classification vocabulary: %s", e.getMessage());
             return Collections.emptySet();
         }
     }
@@ -175,15 +170,15 @@ public class VocabularyService {
      */
     public Set<String> getApprovedAnalysisUnitTerms() {
         if (!cachedAnalysisUnitTerms.isEmpty()) return cachedAnalysisUnitTerms;
-        logger.info("Fetching approved Analysis Unit terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved Analysis Unit terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(ANALYSIS_UNIT_VOCAB_URL, "AnalysisUnit");
             if (terms.isEmpty()) return Collections.emptySet();
             cachedAnalysisUnitTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched {0} approved Analysis Unit terms", terms.size());
+            FairTests.logInfo("Fetched %s approved Analysis Unit terms", terms.size());
             return cachedAnalysisUnitTerms;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch Analysis Unit vocabulary", e);
+            FairTests.logSevere("Failed to fetch Analysis Unit vocabulary: %s", e.getMessage());
             return Collections.emptySet();
         }
     }
@@ -194,15 +189,15 @@ public class VocabularyService {
      */
     public Set<String> getApprovedTimeMethodTerms() {
         if (!cachedTimeMethodTerms.isEmpty()) return cachedTimeMethodTerms;
-        logger.info("Fetching approved Time Method terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved Time Method terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(TIME_METHOD_VOCAB_URL, "TimeMethod");
             if (terms.isEmpty()) return Collections.emptySet();
             cachedTimeMethodTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched {0} approved Time Method terms", terms.size());
+            FairTests.logInfo("Fetched %s approved Time Method terms", terms.size());
             return cachedTimeMethodTerms;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch Time Method vocabulary", e);
+            FairTests.logSevere("Failed to fetch Time Method vocabulary", e);
             return Collections.emptySet();
         }
     }
@@ -213,16 +208,16 @@ public class VocabularyService {
      */
     public Set<String> getApprovedSamplingProcTerms() {
         if (!cachedSamplingProcTerms.isEmpty()) return cachedSamplingProcTerms;
-        logger.info("Fetching Sampling Procedure terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching Sampling Procedure terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(SAMPLING_PROC_VOCAB_URL, "SamplingProcedure");
             if (terms.isEmpty()) return Collections.emptySet();
             cachedSamplingProcTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched {0} approved Sampling Procedure terms", terms.size());
+            FairTests.logInfo("Fetched %s approved Sampling Procedure terms", terms.size());
             return cachedSamplingProcTerms;
         } catch (IOException e) {
             Thread.currentThread().interrupt();
-            logger.log(Level.SEVERE, "Failed to fetch Sampling Procedure vocabulary", e);
+            FairTests.logSevere("Failed to fetch Sampling Procedure vocabulary: %s", e.getMessage());
             return Collections.emptySet();
         }
     }
@@ -233,15 +228,15 @@ public class VocabularyService {
      */
     public Set<String> getApprovedCollectionModeTerms() {
         if (!cachedCollectionModeTerms.isEmpty()) return cachedCollectionModeTerms;
-        logger.info("Fetching approved Mode of Collection terms from CESSDA vocabulary");
+        FairTests.logInfo("Fetching approved Mode of Collection terms from CESSDA vocabulary");
         try {
             Set<String> terms = fetchVocabularyTerms(COLLECTION_MODE_VOCAB_URL, "ModeOfCollection");
             if (terms.isEmpty()) return Collections.emptySet();
             cachedCollectionModeTerms.addAll(terms);
-            logger.log(Level.INFO, "Fetched {0} approved Mode of Collection terms", terms.size());
+            FairTests.logInfo("Fetched %d approved Mode of Collection terms", terms.size());
             return cachedCollectionModeTerms;
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to fetch Mode of Collection vocabulary", e);
+            FairTests.logSevere("Failed to fetch Mode of Collection vocabulary: %s", e.getMessage());
             return Collections.emptySet();
         }
     }
@@ -274,7 +269,7 @@ public class VocabularyService {
                     .toList();
 
             Set<String> elsstKeywords = fetchElsstKeywords(uppercased, langCode);
-            logger.info("ELSST keywords fetched from API: " + elsstKeywords);
+            FairTests.logInfo("ELSST keywords fetched from API: %s", elsstKeywords);
 
             Set<String> normalisedElsst = elsstKeywords.stream()
                     .filter(Objects::nonNull)
@@ -282,22 +277,22 @@ public class VocabularyService {
                     .map(String::toUpperCase)
                     .collect(Collectors.toSet());
 
-            logger.info("ELSST keywords normalised for comparison: " + normalisedElsst);
+            FairTests.logInfo("ELSST keywords normalised for comparison: %s", normalisedElsst);
 
             for (String candidate : candidateTexts) {
                 String normalised = candidate.trim().toUpperCase();
-                logger.log(Level.INFO, "Checking candidate keyword against ELSST API results: ''{0}''", normalised);
+                FairTests.logInfo("Checking candidate keyword against ELSST API results: %s", normalised);
                 if (normalisedElsst.contains(normalised)) {
-                    logger.info(Result.PASS + ": Keyword '" + candidate + "' matches ELSST API result");
+                    FairTests.logInfo("Keyword %s matches ELSST API result", candidate);
                     return Result.PASS;
                 }
             }
 
-            logger.info(Result.FAIL + ": No keywords match ELSST API results");
+            FairTests.logInfo("No keywords match ELSST API results");
             return Result.FAIL;
 
         } catch (IOException e) {
-            logger.severe("Failed to fetch ELSST keywords: " + e.getMessage());
+            FairTests.logSevere("Failed to fetch ELSST keywords: %s", e.getMessage());
             return Result.INDETERMINATE;
         }
     }
@@ -323,7 +318,7 @@ public class VocabularyService {
                     + "?filter=cf.search.labels:" + URLEncoder.encode(keyword, StandardCharsets.UTF_8)
                     + ",cf.search.language:" + encodedLang;
 
-            logger.log(Level.INFO, "Fetching ELSST keywords from API URL: {0}", url);
+            FairTests.logInfo("Fetching ELSST keywords from API URL: %s", url);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -359,8 +354,7 @@ public class VocabularyService {
         }
 
         cachedElsstKeywordsByLang.put(cacheKey, result);
-        logger.log(Level.INFO, "Cached ELSST keywords for key {0}: {1} entries",
-                new Object[]{cacheKey, result.size()});
+        FairTests.logInfo("Cached ELSST keywords for key %s: %s entries", cacheKey, result.size());
         return result;
     }
 
@@ -385,8 +379,7 @@ public class VocabularyService {
         HttpResponse<InputStream> response = sendRequest(request, HttpResponse.BodyHandlers.ofInputStream());
 
         if (response.statusCode() != 200) {
-            logger.log(Level.WARNING, "Vocabulary API returned {0} for {1}",
-                    new Object[]{response.statusCode(), vocabType});
+            FairTests.logWarning("Vocabulary API returned %s for %s", response.statusCode(), vocabType);
             return Collections.emptySet();
         }
 
@@ -407,7 +400,7 @@ public class VocabularyService {
         }
 
         if (terms.isEmpty()) {
-            logger.log(Level.SEVERE, "No {0} terms found in vocabulary response", vocabType);
+            FairTests.logSevere("No %s terms found in vocabulary response", vocabType);
         }
 
         return terms;

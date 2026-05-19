@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  version: "1.0.0"
+  title: " Checks whether records contain metadata that is expressed in a formal language (weak variant)."
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.xxxx"
+  description: >-
+    "Checks for the presence of a formal KR language in the document. The test first checks if the document uses a supported namespace, which is a strong indicator that it is using a formal language."
+  x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.ec5648"
+  contact:
+    x-organization: "Consortium of European Social Science Data Archives"
+    url: "https://cessda.eu"
+    name: "John Shepherdson"
+    x-role: responsible developer
+    email: "john.shepherdson@cessda.eu"
+    x-id: "https://orcid.org/0000-0002-4402-9644"
+paths:
+  "/formal-kr-language":
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/schemas"
+        required: true
+      responses:
+        "200":
+          description:  >-
+            The response is "pass", "fail" or "indeterminate"
+servers:
+  - url: "https://fair-tests.cessda.eu/assess/test"
+components:
+  schemas:
+    schemas:
+      type: object
+      required:
+        - resource_identifier
+      properties:
+        resource_identifier:
+          type: string
+          description: the GUID being tested

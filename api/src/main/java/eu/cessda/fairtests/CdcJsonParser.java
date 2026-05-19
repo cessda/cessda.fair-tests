@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,9 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CdcJsonParser implements FormatParser {
 
-    private static final Logger logger = Logger.getLogger(CdcJsonParser.class.getName());
     private final ObjectMapper mapper = new ObjectMapper();
-
 
     /**
      * MATCH TYPE
@@ -278,7 +275,7 @@ public class CdcJsonParser implements FormatParser {
         JsonNode dataset = mapper.readTree(inputStream);
 
         if (dataset.path("id").isMissingNode()) {
-            logger.warning("No valid dataset ID found in JSON");
+            FairTests.logWarning("Dataset ID is required for validation but was not found. Cannot perform test.");
             return Result.INDETERMINATE;
         }
 
@@ -308,7 +305,7 @@ public class CdcJsonParser implements FormatParser {
          */
         ValidationRule rule = rules.get(test);
         if (rule == null) {
-            logger.warning("No rule defined for " + test);
+            FairTests.logWarning("No rule defined for  %s", test);
             return Result.INDETERMINATE;
         }
 
@@ -338,7 +335,7 @@ public class CdcJsonParser implements FormatParser {
         List<String> values = extractMulti(dataset, rule.fields());
 
         if (values.isEmpty()) {
-            logger.info( "No {0} values found" + rule.label());
+            FairTests.logInfo("No %s values found", rule.label());
             return Result.FAIL;
         }
 
@@ -348,7 +345,7 @@ public class CdcJsonParser implements FormatParser {
                     .anyMatch(v -> !v.isBlank());
 
             if (hasValue) {
-                logger.info( "{0} information found" + rule.label());
+                FairTests.logInfo("%s information found", rule.label());
                 return Result.PASS;
             }
 
@@ -362,13 +359,13 @@ public class CdcJsonParser implements FormatParser {
             String norm = normalise(val);
 
             if (matches(norm, approved, rule.matchType())) {
-                logger.info("Approved {0} found: {1}" +
-                        new Object[] { rule.label(), val });
+                FairTests.logInfo("Approved %s found: %s" ,
+                        rule.label(), val);
                 return Result.PASS;
             }
         }
 
-        logger.info("No approved {0} found" + rule.label());
+        FairTests.logInfo("No approved %s found", rule.label());
         return Result.FAIL;
     }
 
@@ -483,7 +480,7 @@ public class CdcJsonParser implements FormatParser {
         JsonNode langAvailableIn = dataset.path("langAvailableIn");
 
         if (!langAvailableIn.isArray() || langAvailableIn.isEmpty()) {
-            logger.warning("No langAvailableIn codes found — cannot validate ELSST keywords");
+            FairTests.logWarning("No langAvailableIn codes found — cannot validate ELSST keywords");
             return Result.FAIL;
         }
 
@@ -493,8 +490,7 @@ public class CdcJsonParser implements FormatParser {
                 continue;
             }
             if (vocabulary.validateElsstKeywords(terms, lang) == Result.PASS) {
-                logger.info(
-                        "ELSST keywords validated successfully for language {0}" + lang);
+                FairTests.logInfo("ELSST keywords validated successfully for language %s", lang);
                 return Result.PASS;
             }
         }

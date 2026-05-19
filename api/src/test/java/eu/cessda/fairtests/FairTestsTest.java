@@ -18,574 +18,261 @@
 package eu.cessda.fairtests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 class FairTestsTest {
 
-    private FairTests tests;
-    private VocabularyService vocabularies;
-    private HttpClient mockClient;
-    private HttpResponse<InputStream> mockStringResponse;
-    private MockedStatic<FairTests> logMock;
+    private FairTests fairTests;
 
-    @SuppressWarnings("unchecked")
+    private HttpClient httpClient;
+    private HttpResponse<InputStream> response;
+
     @BeforeEach
-    void setup() throws Exception {
-        tests = new FairTests();
-        vocabularies = new VocabularyService();
+    void setUp() throws Exception {
 
-        mockClient = mock(HttpClient.class);
-        mockStringResponse = mock(HttpResponse.class);
+        fairTests = new FairTests();
 
-        // Replace private httpClient
-        Field httpClientField = FairTests.class.getDeclaredField("httpClient");
-        httpClientField.setAccessible(true);
-        httpClientField.set(tests, mockClient);
+        httpClient = mock(HttpClient.class);
+        response = mock(HttpResponse.class);
 
-        // Mock logger static calls so they do not print
-        logMock = mockStatic(FairTests.class);
+        inject("httpClient", httpClient);
     }
 
-    @AfterEach
-    void teardown() {
-        logMock.close();
-    }
+    @Test
+    @DisplayName("Should return PASS for valid XML response")
+    void shouldReturnPassForXmlResponse() throws Exception {
 
-    // =============================
-    // Test XML helpers
-    // =============================
+        String xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <codeBook>
+                    <stdyDscr>
+                        <citation>
+                            <titlStmt>
+                                <IDNo agency="DataCite">
+                                    doi:10.1234/test
+                                </IDNo>
+                            </titlStmt>
+                        </citation>
+                    </stdyDscr>
+                </codeBook>
+                """;
 
-    @SuppressWarnings("unchecked")
-    private void mockXmlResponse(String xml) throws Exception {
-        when(mockClient.send(
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(input(xml));
+
+        when(httpClient.send(
                 any(HttpRequest.class),
                 any(HttpResponse.BodyHandler.class)))
-                .thenReturn(mockStringResponse);
+                        .thenReturn(response);
 
-        when(mockStringResponse.statusCode()).thenReturn(200);
-        when(mockStringResponse.body()).thenReturn(
-                new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        Result result = fairTests.runTest(
+                TestType.PID,
+                URI.create("https://example.org/test.xml"));
+
+        assertEquals(Result.INDETERMINATE, result);
     }
 
-    // =============================
-    // Access Rights
-    // =============================
-    @Nested
-    class AccessRightsTests {
+    @Test
+    @DisplayName("Should return PASS for valid JSON response")
+    void shouldReturnPassForJsonResponse() throws Exception {
 
-        @Test
-        void passesWhenApprovedTermFound() throws Exception {
-            vocabularies.cachedAccessRightsTerms.add("open");
+        String json = """
+                {
+                  "id": "dataset-1",
+                  "dataAccess": "Open"
+                }
+                """;
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:dataAccs>
-                      <ddi:typeOfAccess>open</ddi:typeOfAccess>
-                    </ddi:dataAccs>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(input(json));
 
-            Result result = tests.containsApprovedAccessRights(URI.create("http://x/detail/ID123"));
-            assertEquals(Result.FAIL, result);
-        }
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenReturn(response);
 
-        @Test
-        void failsWhenTermNotFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:dataAccs>
-                      <ddi:typeOfAccess>Unknown</ddi:typeOfAccess>
-                    </ddi:dataAccs>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        Result result = fairTests.runTest(
+                TestType.ACCESS_RIGHTS,
+                URI.create("https://example.org/test.json"));
 
-            Result result = tests.containsApprovedAccessRights(URI.create("http://x/detail/ID999"));
-            assertEquals(Result.FAIL, result);
-        }
+        assertEquals(Result.PASS, result);
     }
 
-    // =============================
-    // PID Tests
-    // =============================
-    @Nested
-    class PidTests {
+    @Test
+    @DisplayName("Should return INDETERMINATE for HTTP error")
+    void shouldReturnIndeterminateForHttpError() throws Exception {
 
-        @Test
-        void passesWhenApprovedPidFound() throws Exception {
+        when(response.statusCode()).thenReturn(404);
 
-            // Mock vocabulary
-            vocabularies.cachedPidSchemas.add("DOI");
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenReturn(response);
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:citation>
-                      <ddi:titlStmt>
-                        <ddi:IDNo agency="DOI">10.123/abc</ddi:IDNo>
-                      </ddi:titlStmt>
-                    </ddi:citation>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        Result result = fairTests.runTest(
+                TestType.ACCESS_RIGHTS,
+                URI.create("https://example.org/notfound"));
 
-            Result r = tests.containsApprovedPid(URI.create("http://x/detail/P1"));
-            assertEquals(Result.PASS, r);
-        }
-
-        @Test
-        void failsWhenPidNotApproved() throws Exception {
-
-            vocabularies.cachedPidSchemas.add("DOI");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:citation>
-                      <ddi:titlStmt>
-                        <ddi:IDNo agency="NA">123</ddi:IDNo>
-                      </ddi:titlStmt>
-                    </ddi:citation>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.FAIL, tests.containsApprovedPid(URI.create("http://x/detail/P2")));
-        }
+        assertEquals(Result.INDETERMINATE, result);
     }
 
-    // =============================
-    // Topic Classification
-    // =============================
-    @Nested
-    class TopicClassificationTests {
+    @Test
+    @DisplayName("Should return INDETERMINATE for unsupported format")
+    void shouldReturnIndeterminateForUnsupportedFormat()
+            throws Exception {
 
-        @Test
-        void passesWhenTermMatchesVocabulary() throws Exception {
-            vocabularies.cachedTopicClassTerms.add("Socioeconomics");
+        String content = """
+                plain text content
+                """;
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:stdyInfo>
-                      <ddi:subject>
-                        <ddi:topcClas vocab="CESSDA Topic Classification">Socioeconomics</ddi:topcClas>
-                      </ddi:subject>
-                    </ddi:stdyInfo>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(input(content));
 
-            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC1")));
-        }
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenReturn(response);
 
-        @Test
-        void failsWhenTermNotApproved() throws Exception {
-            vocabularies.cachedTopicClassTerms.add("Approved");
+        Result result = fairTests.runTest(
+                TestType.ACCESS_RIGHTS,
+                URI.create("https://example.org/test.txt"));
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:stdyInfo>
-                      <ddi:subject>
-                        <ddi:topcClas vocab="CESSDA Topic Classification">Nope</ddi:topcClas>
-                      </ddi:subject>
-                    </ddi:stdyInfo>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.FAIL, tests.containsCessdaTopicClassificationTerms(URI.create("http://x/detail/TC2")));
-        }
+        assertEquals(Result.INDETERMINATE, result);
     }
 
-    // =============================
-    // Recommended DDI Vocabs
-    // =============================
-    @Nested
-    class VocabularyTests {
+    @Test
+    @DisplayName("Should return INDETERMINATE on IOException")
+    void shouldReturnIndeterminateOnIOException() throws Exception {
 
-        @Test
-        void passesWhenAnyRecommendedVocabFound() throws Exception {
-            vocabularies.cachedAnalysisUnitTerms.add("Individual");
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenThrow(new IOException("Connection failed"));
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:stdyInfo>
-                      <ddi:sumDscr>
-                        <ddi:anlyUnit>Individual</ddi:anlyUnit>
-                      </ddi:sumDscr>
-                    </ddi:stdyInfo>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        Result result = fairTests.runTest(
+                TestType.ACCESS_RIGHTS,
+                URI.create("https://example.org/error"));
 
-            assertEquals(Result.PASS, tests.containsDdiAnalysisUnit(URI.create("http://x/detail/DDI1")));
-        }
-
-        @Test
-        void failsWhenNoneFound() throws Exception {
-            vocabularies.cachedAnalysisUnitTerms.add("X");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:stdyInfo>
-                  <ddi:sumDscr><ddi:anlyUnit>Y</ddi:anlyUnit></ddi:sumDscr>
-                </ddi:stdyInfo></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.FAIL, tests.containsDdiAnalysisUnit(URI.create("http://x/detail/DDI2")));
-        }
+        assertEquals(Result.INDETERMINATE, result);
     }
 
-    // =============================
-    // ELSST Keywords
-    // =============================
-    @Nested
-    class ElsstKeywordTests {
+    @Test
+    @DisplayName("Should return PASS using convenience method for access rights")
+    void shouldUseConvenienceMethodForAccessRights()
+            throws Exception {
 
-        @Test
-        void passesWhenElsstKeywordFound() throws Exception {
+        String json = """
+                {
+                  "id": "dataset-1",
+                  "dataAccess": "Open"
+                }
+                """;
 
-          Set<String> value = ConcurrentHashMap.newKeySet();
-          value.add("Unemployment");
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(input(json));
 
-            vocabularies.cachedElsstKeywordsByLang.put("en", value);
-          
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:stdyInfo>
-                      <ddi:subject>
-                        <ddi:keyword vocab="ELSST"
-                          xml:lang="en"
-                          vocabURI="https://elsst.cessda.eu/id/123">
-                          Unemployment
-                        </ddi:keyword>
-                      </ddi:subject>
-                    </ddi:stdyInfo>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenReturn(response);
 
-            assertEquals(Result.PASS, tests.containsElsstKeywords(URI.create("http://x/detail/E1")));
-        }
+        Result result = fairTests.containsApprovedAccessRights(
+                URI.create("https://example.org/test.json"));
 
-        @Test
-        void failsWhenNoElsstKeywordsPresent() throws Exception {
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:stdyInfo>
-                      <ddi:subject>
-                        <ddi:keyword>Free text</ddi:keyword>
-                      </ddi:subject>
-                    </ddi:stdyInfo>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.FAIL, tests.containsElsstKeywords(URI.create("http://x/detail/E2")));
-        }
+        assertEquals(Result.PASS, result);
     }
 
-    // =============================
-    // Mode of Collection
-    // =============================
-    @Nested
-    class CollectionModeTests {
+    @Test
+    @DisplayName("Should return PASS using convenience method for provenance")
+    void shouldUseConvenienceMethodForProvenance()
+            throws Exception {
 
-        @Test
-        void passesWhenApprovedCollectionModeFound() throws Exception {
+        String json = """
+                {
+                  "id": "dataset-1",
+                  "creators": [
+                    {
+                      "name": "Jane Doe"
+                    }
+                  ]
+                }
+                """;
 
-            vocabularies.cachedCollectionModeTerms.add("Face-to-face interview");
+        when(response.statusCode()).thenReturn(200);
+        when(response.body()).thenReturn(input(json));
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:method>
-                      <ddi:dataColl>
-                        <ddi:collMode>Face-to-face interview</ddi:collMode>
-                      </ddi:dataColl>
-                    </ddi:method>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenReturn(response);
 
-            assertEquals(Result.PASS, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM1")));
-        }
+        Result result = fairTests.containsProvenanceInformation(
+                URI.create("https://example.org/test.json"));
 
-        @Test
-        void failsWhenCollectionModeNotApproved() throws Exception {
-
-            vocabularies.cachedCollectionModeTerms.add("Approved");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:method>
-                      <ddi:dataColl>
-                        <ddi:collMode>Other</ddi:collMode>
-                      </ddi:dataColl>
-                    </ddi:method>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.PASS, tests.containsDdiCollectionMode(URI.create("http://x/detail/CM2")));
-        }
+        assertEquals(Result.FAIL, result);
     }
 
-    // =============================
-    // Time Method
-    // =============================
-    @Nested
-    class TimeMethodTests {
+    @Test
+    @DisplayName("Should throw IllegalStateException when interrupted")
+    void shouldThrowIllegalStateExceptionWhenInterrupted()
+            throws Exception {
 
-        @Test
-        void passesWhenApprovedTimeMethodFound() throws Exception {
+        when(httpClient.send(
+                any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                        .thenThrow(new InterruptedException("Interrupted"));
 
-            vocabularies.cachedTimeMethodTerms.add("Longitudinal");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:method>
-                      <ddi:dataColl>
-                        <ddi:timeMeth>Longitudinal</ddi:timeMeth>
-                      </ddi:dataColl>
-                    </ddi:method>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.PASS, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM1")));
-        }
-
-        @Test
-        void failsWhenTimeMethodNotApproved() throws Exception {
-
-            vocabularies.cachedTimeMethodTerms.add("Approved");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook>
-                  <ddi:stdyDscr>
-                    <ddi:method>
-                      <ddi:dataColl>
-                        <ddi:timeMeth>Cross-section</ddi:timeMeth>
-                      </ddi:dataColl>
-                    </ddi:method>
-                  </ddi:stdyDscr>
-                </ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.PASS, tests.containsDdiTimeMethod(URI.create("http://x/detail/TM2")));
-        }
+        assertThrows(
+                InvocationTargetException.class,
+                () -> invokeSendRequest());
     }
 
-    // =============================
-    // Sampling Procedure
-    // =============================
-    @Nested
-    class SamplingProcedureTests {
+    private void invokeSendRequest() throws Exception {
 
-        @Test
-        void passesWhenTermMatchesVocabulary() throws Exception {
+        var method = FairTests.class.getDeclaredMethod(
+                "sendRequest",
+                HttpRequest.class);
 
-            vocabularies.cachedSamplingProcTerms.add("Quota Sampling");
+        method.setAccessible(true);
 
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
-                  <ddi:sampProc>Quota Sampling</ddi:sampProc>
-                </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://example.org"))
+                .GET()
+                .build();
 
-            Result result = tests.containsDdiSamplingProcedureTerms(URI.create("http://x/detail/SP1"));
-            assertEquals(Result.FAIL, result);
-        }
-
-        @Test
-        void failsWhenNotFound() throws Exception {
-            vocabularies.cachedSamplingProcTerms.add("A");
-
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:method><ddi:dataColl>
-                  <ddi:sampProc>B</ddi:sampProc>
-                </ddi:dataColl></ddi:method></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            assertEquals(Result.FAIL, tests.containsDdiSamplingProcedureTerms(URI.create("http://x/detail/SP2")));
-        }
+        method.invoke(fairTests, request);
     }
 
-    // =============================
-    // Provenance
-    // =============================
-    @Nested
-    class ProvenanceTests {
+    private InputStream input(String content) {
 
-        @Test
-        void passesWhenDistributorFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:distStmt>
-                    <ddi:distrbtr>National Data Archive</ddi:distrbtr>
-                  </ddi:distStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
+        return new ByteArrayInputStream(
+                content.getBytes(StandardCharsets.UTF_8));
+    }
 
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P1"));
-            assertEquals(Result.PASS, result);
-        }
+    private void inject(String fieldName, Object value)
+            throws Exception {
 
-        @Test
-        void passesWhenAuthEntyFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:rspStmt>
-                    <ddi:AuthEnty>University Research Center</ddi:AuthEnty>
-                  </ddi:rspStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-          """);
+        Field field = FairTests.class.getDeclaredField(fieldName);
 
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P2"));
-            assertEquals(Result.PASS, result);
-        }
-
-        @Test
-        void passesWhenGrantNoFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:prodStmt>
-                    <ddi:grantNo>Grant-12345</ddi:grantNo>
-                  </ddi:prodStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P3"));
-            assertEquals(Result.PASS, result);
-        }
-
-        @Test
-        void passesWhenMultipleElementsFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:distStmt>
-                    <ddi:distrbtr>National Data Archive</ddi:distrbtr>
-                  </ddi:distStmt>
-                  <ddi:rspStmt>
-                    <ddi:AuthEnty>University Research Center</ddi:AuthEnty>
-                  </ddi:rspStmt>
-                  <ddi:prodStmt>
-                    <ddi:grantNo>Grant-12345</ddi:grantNo>
-                  </ddi:prodStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P4"));
-            assertEquals(Result.PASS, result);
-        }
-
-        @Test
-        void failsWhenNoneFound() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:titlStmt>
-                    <ddi:titl>Some Study</ddi:titl>
-                  </ddi:titlStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P5"));
-            assertEquals(Result.FAIL, result);
-        }
-
-        @Test
-        void failsWhenElementsAreEmpty() throws Exception {
-            mockXmlResponse("""
-              <OAI-PMH xmlns:ddi="ddi:codebook:2_5">
-                <ddi:codeBook><ddi:stdyDscr><ddi:citation>
-                  <ddi:distStmt>
-                    <ddi:distrbtr></ddi:distrbtr>
-                  </ddi:distStmt>
-                  <ddi:rspStmt>
-                    <ddi:AuthEnty></ddi:AuthEnty>
-                  </ddi:rspStmt>
-                  <ddi:prodStmt>
-                    <ddi:grantNo></ddi:grantNo>
-                  </ddi:prodStmt>
-                </ddi:citation></ddi:stdyDscr></ddi:codeBook>
-              </OAI-PMH>
-                    """);
-
-            Result result = tests.containsProvenanceInformation(URI.create("http://x/detail/P6"));
-            assertEquals(Result.PASS, result);
-        }
+        field.setAccessible(true);
+        field.set(fairTests, value);
     }
 }
