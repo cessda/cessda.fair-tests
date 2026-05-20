@@ -588,7 +588,16 @@ public class XmlParser implements FormatParser {
 
     /**
      * Checks for the presence of resolvable FAIR vocabulary linkages in the XML
-     * document.
+     * document. The method uses XPath to find all elements that have a "vocabURI"
+     * attribute, then iterates through those elements to check if they have both
+     * a declared vocabulary name (via the "vocab" attribute) and a linked
+     * vocabulary URI (via the "vocabURI" attribute).
+     * For each candidate FAIR vocabulary linkage found, it checks if the "vocabURI"
+     * looks like it could be resolvable (e.g. is a valid URL) and then attempts to
+     * resolve it. If any resolvable FAIR vocabulary linkages are found, it returns
+     * Result.PASS; if candidates are found but none are resolvable, it
+     * returns Result.FAIL; if no candidates are found or an error occurs during
+     * processing, it returns Result.INDETERMINATE.
      *
      * @param doc the XML document to check for FAIR vocabulary linkages
      * @return Result indicating whether resolvable FAIR vocabulary linkages are

@@ -10,7 +10,8 @@ using precompiled XPath expressions, and returns `PASS`, `FAIL`, or
 `INDETERMINATE`.
 
 The class is data-driven: most tests are expressed as `ValidationRule`
-records in a static immutable `Map`. Only `ELSST_KEYWORDS` and `PROVENANCE` require bespoke logic and are handled by dedicated
+records in a static immutable `Map`. Only `ELSST_KEYWORDS` and
+`PROVENANCE` require bespoke logic and are handled by dedicated
 private methods.
 
 ## Supported tests
@@ -19,24 +20,57 @@ The following `TestType` values are handled:
 
 - `ACCESS_RIGHTS` — evaluates `//ddi:conditions` using full text content;
   CONTAINS match against approved access rights terms.
-- `PID` — evaluates `//ddi:IDNo`, extracts the `agency` attribute; EXACT
-  match against approved PID schemas.
-- `TOPIC_CLASS` — evaluates `//ddi:topcClas` using full text content;
-  EXACT match against approved CESSDA topic classification terms.
 - `DDI_ANALYSIS_UNIT` — evaluates `//ddi:anlyUnit` using direct text
   only; EXACT match.
 - `DDI_COLLECTION_MODE` — evaluates `//ddi:collMode` using direct text
   only; EXACT match.
-- `DDI_TIME_METHOD` — evaluates `//ddi:timeMeth` using direct text only;
-  EXACT match.
 - `DDI_SAMPLEPROC` — evaluates `//ddi:sampProc` using full text content;
   CONTAINS match against approved sampling procedure terms.
-- `PROVENANCE` — checks for the presence of `//ddi:distrbtr`,
-  `//ddi:AuthEnty`, or `//ddi:grantNo`; returns `PASS` if any exist.
+- `DDI_TIME_METHOD` — evaluates `//ddi:timeMeth` using direct text only;
+  EXACT match.
 - `ELSST_KEYWORDS` — finds all `//ddi:keyword` elements, filters those
   with `vocab="ELSST"` and a `vocabURI` containing `"elsst"`, then
   validates the collected terms via `VocabularyService`.
-- `STRUCTURED_METADATA` — XXX
+- `FAIR_VOCABULARY` — finds all elements carrying a `vocabURI` attribute
+  and checks that both `vocab` and `vocabURI` are present and
+  non-blank. The first `vocabURI` that resolves successfully over HTTP
+  returns `PASS`. Returns `FAIL` if candidates are present but none
+  resolve; returns `INDETERMINATE` if no candidates are found or an
+  error occurs.
+- `FORMAL_KR_LANGUAGE` — checks that the document carries a recognised
+  DDI namespace URI (one of the values in `SUPPORTED_DDI_NAMESPACES`).
+  Returns `PASS` when the namespace is present, with or without an
+  `xsi:schemaLocation` attribute; returns `FAIL` if no recognised DDI
+  namespace is detected.
+- `GROUNDED_METADATA` — collects all namespace URIs and
+  `xsi:schemaLocation` URLs from the DOM, discards common
+  infrastructure namespaces (W3C, OAI, LoC, Dublin Core, and any URI
+  containing `"xml"`), then attempts HTTP resolution of each remaining
+  candidate. Returns `PASS` on the first successful resolution;
+  `FAIL` if candidates are found but none resolve; `INDETERMINATE` if
+  no candidates remain or an error occurs.
+- `PID` — evaluates `//ddi:IDNo`, extracts the `agency` attribute; EXACT
+  match against approved PID schemas.
+- `PROVENANCE` — checks for the presence of `//ddi:distrbtr`,
+  `//ddi:AuthEnty`, or `//ddi:grantNo`; returns `PASS` if any exist.
+- `RETRIEVABLE_PROTOCOL` — evaluates `//ddi:IDNo`, constructs a
+  resolution URL from the `agency` attribute and element text content
+  (DOI → `https://doi.org/`, Handle → `https://hdl.handle.net/`,
+  ARK → `https://n2t.net/`), then tests whether the URL uses an open
+  protocol and resolves successfully over HTTP. Returns `PASS` on the
+  first resolvable identifier; `FAIL` if identifiers are present but
+  none resolve; `INDETERMINATE` if no identifiers are found or an
+  error occurs.
+- `SEARCHABLE` — checks for the simultaneous presence of `//oai:record`,
+  `//oai:header`, and `//oai:header/oai:identifier` elements, which
+  indicate that the record is wrapped in an OAI-PMH envelope and is
+  therefore discoverable. Returns `PASS` if all three are present;
+  `FAIL` otherwise.
+- `STRUCTURED_METADATA` — checks that the document root element declares
+  a supported DDI Codebook namespace URI. Returns `PASS` if a
+  supported namespace is detected; `FAIL` otherwise.
+- `TOPIC_CLASS` — evaluates `//ddi:topcClas` using full text content;
+  EXACT match against approved CESSDA topic classification terms.
 
 ## Internal design
 
@@ -120,20 +154,22 @@ The method:
 
 1. Parses the stream into a DOM `Document` via `parse(InputStream)`,
    which wraps any `SAXException` as an `IOException`.
-2. Handles `PROVENANCE` by calling `checkProvenance(Document)`.
-3. Handles `ELSST_KEYWORDS` by calling
-   `checkElsstKeywords(Document, VocabularyService)`.
-4. Looks up the `ValidationRule` for all other test types; returns
+2. Dispatches bespoke test types via a `switch` statement:
+   `ELSST_KEYWORDS`, `FAIR_VOCABULARY`, `FORMAL_KR_LANGUAGE`,
+   `GROUNDED_METADATA`, `PROVENANCE`, `RETRIEVABLE_PROTOCOL`,
+   `SEARCHABLE`, and `STRUCTURED_METADATA` each delegate to a
+   dedicated private method.
+3. Looks up the `ValidationRule` for all other test types; returns
    `INDETERMINATE` if none is found.
-5. Calls `evaluate` and returns the result.
+4. Calls `evaluate` and returns the result.
 
 ## Return values
 
 | Value | Meaning |
 |-------|---------|
-| `PASS` | At least one node contained an approved term (or a provenance/ELSST element was found). |
-| `FAIL` | Relevant nodes were found but no approved term matched (or no provenance/ELSST elements were present). |
-| `INDETERMINATE` | Parsing failed, an XPath error occurred, or no rule exists for the requested test type. |
+| `PASS` | At least one node contained an approved term; or a required element or resolvable URL was found. |
+| `FAIL` | Relevant nodes were found but no approved term matched; or required elements or resolvable URLs were absent. |
+| `INDETERMINATE` | Parsing failed, an XPath error occurred, no candidates were found, or no rule exists for the requested test type. |
 
 ## Dependencies
 
@@ -160,5 +196,11 @@ immutable and therefore safe to share.
 - The `PROVENANCE` check uses a heuristic: it returns `PASS` if any of
   distributor, author entity, or grant number elements are present,
   without validating their content.
-- Adding a new vocabulary test requires only a new `ValidationRule` entry
-  in `RULES`; no changes to `runTest` or `evaluate` are needed.
+- The `GROUNDED_METADATA` and `FAIR_VOCABULARY` checks make outbound
+  HTTP requests at runtime. Network timeouts (connect and read) are
+  set to 5 seconds per URL.
+- `RETRIEVABLE_PROTOCOL` supports DOI, Handle, and ARK agency values;
+  URNs and unrecognised agency values are silently skipped.
+- Adding a new vocabulary test requires only a new `ValidationRule`
+  entry in `RULES`; no changes to `runTest` or `evaluate` are needed.
+  

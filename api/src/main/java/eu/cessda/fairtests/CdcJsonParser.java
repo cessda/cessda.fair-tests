@@ -1,7 +1,25 @@
+/*
+ * SPDX-FileCopyrightText: 2026 CESSDA ERIC (support@cessda.eu)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package eu.cessda.fairtests;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,15 +35,16 @@ public class CdcJsonParser implements FormatParser {
     private final ObjectMapper mapper = new ObjectMapper();
 
     /**
-     * MATCH TYPE
-     * Defines how to compare extracted values against the approved vocabulary
+     * Defines how to compare extracted values against approved vocabulary
      * terms.
-     * - EXACT: the extracted value must exactly match one of the approved terms.
-     * - CONTAINS: the extracted value must contain (as a substring) one of the
-     * approved terms.
-     * This is useful for cases where the extracted value may include additional
-     * context or
-     * qualifiers around the approved term, which is common in real-world datasets.
+     * <ul>
+     * <li>EXACT: the extracted value must exactly match one of the approved
+     * terms.</li>
+     * <li>CONTAINS: the extracted value must contain (as a substring) one of
+     * the approved terms. Useful for cases where the extracted value includes
+     * additional context around the approved term, as is common in real-world
+     * datasets.</li>
+     * </ul>
      */
     private enum MatchType {
         EXACT,
@@ -33,24 +52,15 @@ public class CdcJsonParser implements FormatParser {
     }
 
     /**
-     * RULE TYPE
-     * Defines the type of validation rule, which can be used to determine how to
-     * evaluate the rule. For example, VOCAB_MATCH rules require checking against an
-     * approved vocabulary, while PRESENCE_ANY rules simply check for the presence
-     * of
-     * any value in the specified field(s) without needing to compare against a
-     * vocabulary.
-     * This allows us to have different evaluation logic for different types of
-     * rules,
-     * while still using the same underlying structure for defining the rules and
-     * the core evaluation engine.
-     * For example, the PROVENANCE test would be a PRESENCE_ANY rule, while the
-     * other tests that check
-     * against approved vocabularies would be VOCAB_MATCH rules.
-     * This design allows us to easily add new types of rules in the future if
-     * needed,
-     * without affecting the core logic of the runTest method or the generic
-     * evaluation engine.
+     * Defines the type of validation rule, determining how it is evaluated.
+     * <ul>
+     * <li>VOCAB_MATCH: checks extracted values against an approved
+     * vocabulary.</li>
+     * <li>PRESENCE_ANY: checks only that a non-blank value is present in the
+     * specified field(s), without comparing against a vocabulary. Used for
+     * tests such as PROVENANCE and STRUCTURED_METADATA where existence of a
+     * value is sufficient.</li>
+     * </ul>
      */
     private enum RuleType {
         VOCAB_MATCH,
@@ -58,275 +68,207 @@ public class CdcJsonParser implements FormatParser {
     }
 
     /**
-     * VALIDATION RULE
-     * This record encapsulates all the information needed to validate a specific
-     * test type:
-     * - type: the type of rule (e.g. VOCAB_MATCH, PRESENCE_ANY) which determines
-     * how the rule is evaluated.
-     * - fields: the JSON field(s) to extract values from for this test. This can
-     * support multiple paths if needed, allowing for flexibility in handling
-     * different JSON structures across datasets.
-     * - extractionMode: the strategy to use for extracting values from that field.
-     * - vocabSupplier: a function that takes a VocabularyService and returns the
-     * set of approved terms for that test.
-     * - matchType: the type of match to perform when comparing extracted values
-     * against the approved terms.
-     * - label: a human-readable label for logging purposes.
+     * Encapsulates all information needed to evaluate a specific test type.
+     *
+     * @param type          determines how the rule is evaluated (VOCAB_MATCH or
+     *                      PRESENCE_ANY).
+     * @param fields        JSON path(s) from which candidate values are
+     *                      extracted. Multiple paths are supported to handle
+     *                      varying JSON structures across datasets.
+     * @param vocabSupplier retrieves the approved term set from the
+     *                      VocabularyService; {@code null} for PRESENCE_ANY
+     *                      rules.
+     * @param matchType     EXACT or CONTAINS comparison; {@code null} for
+     *                      PRESENCE_ANY rules.
+     * @param label         human-readable name used in log messages.
      */
     private record ValidationRule(
             RuleType type,
-            List<String> fields, // supports multiple paths
+            List<String> fields,
             Function<VocabularyService, Set<String>> vocabSupplier,
             MatchType matchType,
             String label) {
     }
 
     /**
-     * VALIDATIONRULE DEFINITIONS
-     * This map defines the validation rules for each test type. Each rule
-     * specifies:
-     * - The JSON field to extract from the dataset.
-     * - The extraction mode to use for that field.
-     * - A function to retrieve the approved vocabulary terms for that test.
-     * - The type of match to perform (exact or contains).
-     * - A human-readable label for logging purposes.
+     * Maps each rules-based {@link TestType} to a {@link ValidationRule}.
+     * Tests that require bespoke logic ({@code ELSST_KEYWORDS},
+     * {@code FAIR_VOCABULARY}, {@code GROUNDED_METADATA},
+     * {@code RETRIEVABLE_PROTOCOL}, and {@code SEARCHABLE}) are not listed
+     * here; they are dispatched directly in {@link #runTest}.
+     *
+     * <p>Notes on specific rules:</p>
+     * <ul>
+     * <li>{@code PID}: extracts the {@code agency} field from each entry in
+     * {@code pidStudies} (e.g. {@code "DOI"}) and checks it against approved
+     * PID schemas.</li>
+     * <li>{@code DDI_SAMPLEPROC}: uses {@code samplingProcedureFreeTexts}
+     * rather than {@code typeOfSamplingProcedures[*].term} because the CDC
+     * schema stores free text here; CONTAINS match is used accordingly.</li>
+     * <li>{@code PROVENANCE}: PRESENCE_ANY across publisher name, creator
+     * names, and funding agency — any non-blank value returns PASS.</li>
+     * <li>{@code STRUCTURED_METADATA}: PRESENCE_ANY on {@code titleStudy} and
+     * {@code abstract} — their presence indicates a structured CDC record.</li>
+     * <li>{@code FORMAL_KR_LANGUAGE}: PRESENCE_ANY on
+     * {@code studyXmlSourceUrl} — its presence indicates the record originates
+     * from a formal DDI XML source accessible via OAI-PMH.</li>
+     * </ul>
      */
-    private final Map<TestType, ValidationRule> rules = Map.of(
+    private static final Map<TestType, ValidationRule> RULES = Map.ofEntries(
 
-            /**
-             * For Access Rights, we look for a scalar field 'dataAccess' and check if it
-             * contains
-             * any of the approved access rights terms. The 'CONTAINS' match type allows for
-             * values
-             * like "Restricted - see documentation" to pass if "Restricted" is an approved
-             * term.
-             */
-            TestType.ACCESS_RIGHTS,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("dataAccess"),
-                    VocabularyService::getApprovedAccessRightsTerms,
-                    MatchType.CONTAINS,
-                    "Access Rights"),
+            Map.entry(TestType.ACCESS_RIGHTS,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("dataAccess"),
+                            VocabularyService::getApprovedAccessRightsTerms,
+                            MatchType.CONTAINS,
+                            "Access Rights")),
 
-            /**
-             * For PID, we use the generic extraction mode to handle various possible
-             * structures
-             * (e.g. a simple string, an object with a 'pid' field, etc.).
-             * We check for an exact match against approved PID schemas.
-             */
-            TestType.PID,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("pidStudies"),
-                    VocabularyService::getApprovedPidSchemas,
-                    MatchType.EXACT,
-                    "PID schema"),
+            Map.entry(TestType.PID,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("pidStudies"),
+                            VocabularyService::getApprovedPidSchemas,
+                            MatchType.EXACT,
+                            "PID schema")),
 
-            /**
-             * For Topic Classification, we also use the generic extraction mode to handle
-             * various structures,
-             * but we check for an exact match against approved topic classification terms.
-             * The spec suggests 'classifications[*].term' but in practice we find
-             * 'classifications'
-             * with various structures, so we use the generic extractor to be flexible.
-             * The match is exact because we expect the values to be controlled vocabulary
-             * terms,
-             * not free text.
-             */
-            TestType.TOPIC_CLASS,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("classifications"),
-                    VocabularyService::getApprovedTopicClassTerms,
-                    MatchType.EXACT,
-                    "Topic Classification"),
+            Map.entry(TestType.TOPIC_CLASS,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("classifications"),
+                            VocabularyService::getApprovedTopicClassTerms,
+                            MatchType.EXACT,
+                            "Topic Classification")),
 
-            /**
-             * For DDI Analysis Unit, we also use the generic extraction mode to handle
-             * various structures,
-             * but we check for an exact match against approved analysis unit terms.
-             * The spec suggests 'unitTypes[*].term' but in practice we find 'unitTypes'
-             * with various structures, so we use the generic extractor to be flexible.
-             * The match is exact because we expect the values to be controlled vocabulary
-             * terms, not free text.
-             */
-            TestType.DDI_ANALYSIS_UNIT,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("unitTypes"),
-                    VocabularyService::getApprovedAnalysisUnitTerms,
-                    MatchType.EXACT,
-                    "Analysis Unit"),
+            Map.entry(TestType.DDI_ANALYSIS_UNIT,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("unitTypes"),
+                            VocabularyService::getApprovedAnalysisUnitTerms,
+                            MatchType.EXACT,
+                            "Analysis Unit")),
 
-            /**
-             * For DDI Collection Mode, we also use the generic extraction mode to handle
-             * various structures,
-             * but we check for an exact match against approved collection mode terms.
-             * The spec suggests 'typeOfModeOfCollections[*].term' but in practice we find
-             * 'typeOfModeOfCollections'
-             * with various structures, so we use the generic extractor to be flexible.
-             * The match is exact because we expect the values to be controlled vocabulary
-             * terms, not free text.
-             */
-            TestType.DDI_COLLECTION_MODE,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("typeOfModeOfCollections"),
-                    VocabularyService::getApprovedCollectionModeTerms,
-                    MatchType.EXACT,
-                    "Collection Mode"),
+            Map.entry(TestType.DDI_COLLECTION_MODE,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("typeOfModeOfCollections"),
+                            VocabularyService::getApprovedCollectionModeTerms,
+                            MatchType.EXACT,
+                            "Collection Mode")),
 
-            /**
-             * For DDI Time Method, we also use the generic extraction mode to handle
-             * various structures,
-             * but we check for an exact match against approved time method terms.
-             * The spec suggests 'typeOfTimeMethods[*].term' but in practice we find
-             * 'typeOfTimeMethods'
-             * with various structures, so we use the generic extractor to be flexible.
-             * The match is exact because we expect the values to be controlled vocabulary
-             * terms, not free text.
-             */
-            TestType.DDI_TIME_METHOD,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("typeOfTimeMethods"),
-                    VocabularyService::getApprovedTimeMethodTerms,
-                    MatchType.EXACT,
-                    "Time Method"),
+            Map.entry(TestType.DDI_TIME_METHOD,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("typeOfTimeMethods"),
+                            VocabularyService::getApprovedTimeMethodTerms,
+                            MatchType.EXACT,
+                            "Time Method")),
 
-            /**
-             * Note there is a bug in the spec: rather than
-             * 'typeOfSamplingProcedures[*].term'
-             * 'samplingProcedureFreeTexts' is used, and the values are free text rather
-             * than controlled vocabulary terms. Hence we use CONTAINS rather than EXACT,
-             * and we normalise the approved terms to allow for partial matches.
-             */
-            TestType.DDI_SAMPLEPROC,
-            new ValidationRule(
-                    RuleType.VOCAB_MATCH,
-                    List.of("samplingProcedureFreeTexts"),
-                    VocabularyService::getApprovedSamplingProcTerms,
-                    MatchType.CONTAINS,
-                    "Sampling Procedure"),
+            Map.entry(TestType.DDI_SAMPLEPROC,
+                    new ValidationRule(
+                            RuleType.VOCAB_MATCH,
+                            List.of("samplingProcedureFreeTexts"),
+                            VocabularyService::getApprovedSamplingProcTerms,
+                            MatchType.CONTAINS,
+                            "Sampling Procedure")),
 
-            /**
-             * For Provenance, we check for the presence of either a 'publisher' or
-             * 'creators' field with a 'name' subfield, or a 'funding' field with an
-             * 'agency'
-             * subfield. We use the PRESENCE_ANY rule type because we just want to check
-             * for the presence of any value in those fields, without needing to compare
-             * against an approved vocabulary. The generic extraction mode allows us to
-             * handle the various ways in which provenance information might be structured
-             * in
-             * the JSON datasets, based on our analysis of real-world datasets and the
-             * flexibility needed to accommodate the spec's suggestions and the reality of
-             * what we find in the wild. The presence of any value in those fields would
-             * indicate that provenance information is present, which is what this test is
-             * designed to check for.
-             * 
-             */
-            TestType.PROVENANCE,
-            new ValidationRule(
-                    RuleType.PRESENCE_ANY,
-                    List.of(
-                            "publisher.publisher",
-                            "creators[].name",
-                            "funding[].agency"),
-                    null,
-                    null,
-                    "Provenance"));
+            Map.entry(TestType.PROVENANCE,
+                    new ValidationRule(
+                            RuleType.PRESENCE_ANY,
+                            List.of(
+                                    "publisher.publisher",
+                                    "creators[].name",
+                                    "funding[].agency"),
+                            null,
+                            null,
+                            "Provenance")),
 
-    @Override
+            Map.entry(TestType.STRUCTURED_METADATA,
+                    new ValidationRule(
+                            RuleType.PRESENCE_ANY,
+                            List.of("titleStudy", "abstract"),
+                            null,
+                            null,
+                            "Structured Metadata")),
+
+            Map.entry(TestType.FORMAL_KR_LANGUAGE,
+                    new ValidationRule(
+                            RuleType.PRESENCE_ANY,
+                            List.of("studyXmlSourceUrl"),
+                            null,
+                            null,
+                            "Formal KR Language")));
+
     /**
-     * The main entry point for running a test on a dataset. It reads the JSON from
-     * the input stream,
-     * checks for the presence of a dataset ID, and then dispatches to the
-     * appropriate validation
-     * logic based on the test type. For most tests, it looks up the corresponding
-     * ValidationRule
-     * and evaluates it against the dataset. For special cases like PROVENANCE and
-     * ELSST_KEYWORDS,
-     * it calls dedicated methods to handle the specific logic for those tests.
-     * 
-     * The method returns PASS, FAIL, or INDETERMINATE based on the outcome of the
-     * validation.
-     * The INDETERMINATE result is used when the test cannot be performed due to
-     * missing information
-     * (e.g. no dataset ID) or when there is no defined rule for the given test
-     * type.
-     * The method also logs relevant information at each step to aid in debugging
-     * and understanding the validation process.
-     * Note that the method assumes that the input JSON structure is based on the
-     * CDC schema,
-     * and the extraction logic in the ValidationRules is designed to handle the
-     * variations
-     * observed in real-world datasets following that schema.
-     * 
+     * Runs the specified test against the JSON dataset read from the input
+     * stream.
+     *
+     * <p>The method first parses the stream and verifies that an {@code id}
+     * field is present (returning {@link Result#INDETERMINATE} if not). It
+     * then dispatches to a bespoke method for test types that cannot be
+     * expressed as a simple rule ({@code ELSST_KEYWORDS},
+     * {@code FAIR_VOCABULARY}, {@code GROUNDED_METADATA},
+     * {@code RETRIEVABLE_PROTOCOL}, {@code SEARCHABLE}), and falls back to
+     * the rules-based engine for all remaining types. Returns
+     * {@link Result#INDETERMINATE} if no rule is defined for the test type.
+     * </p>
+     *
      * @param test        the type of test to run
      * @param inputStream the input stream containing the JSON dataset
-     * @param vocabulary  the vocabulary service to use for retrieving approved
-     *                    terms
-     * @return the result of the test (PASS, FAIL, or INDETERMINATE)
+     * @param vocabulary  the vocabulary service for retrieving approved terms
+     * @return {@link Result#PASS}, {@link Result#FAIL}, or
+     *         {@link Result#INDETERMINATE}
+     * @throws IOException if the input stream cannot be read or parsed
      */
-    public Result runTest(TestType test, InputStream inputStream, VocabularyService vocabulary)
-            throws IOException {
+    @Override
+    public Result runTest(TestType test, InputStream inputStream,
+            VocabularyService vocabulary) throws IOException {
 
         JsonNode dataset = mapper.readTree(inputStream);
 
         if (dataset.path("id").isMissingNode()) {
-            FairTests.logWarning("Dataset ID is required for validation but was not found. Cannot perform test.");
+            FairTests.logWarning(
+                    "Dataset ID is required for validation but was not "
+                    + "found. Cannot perform test.");
             return Result.INDETERMINATE;
         }
 
-        /**
-         * Special case for ELSST_KEYWORDS, which also doesn't fit the standard
-         * pattern and requires checking the 'keywords' array for specific vocab terms
-         * with a 'vocab' of 'ELSST'. The validation logic for this test is specific
-         * enough to warrant
-         * its own method, rather than trying to shoehorn it into the generic rule
-         * evaluation engine
-         */
-        if (test == TestType.ELSST_KEYWORDS) {
-            return checkElsstKeywords(dataset, vocabulary);
+        switch (test) {
+            case ELSST_KEYWORDS       -> { return checkElsstKeywords(dataset, vocabulary); }
+            case FAIR_VOCABULARY      -> { return checkFairVocabulary(dataset); }
+            case GROUNDED_METADATA    -> { return checkGroundedMetadata(dataset); }
+            case RETRIEVABLE_PROTOCOL -> { return checkRetrievableProtocol(dataset); }
+            case SEARCHABLE           -> { return checkSearchable(dataset); }
+            default -> { /* fall through to rules-based evaluation */ }
         }
 
-        /**
-         * For all other tests, we look up the corresponding ValidationRule from
-         * the 'rules' map and evaluate it against the dataset.
-         * If there is no defined rule for the given test type, we log a warning
-         * and return INDETERMINATE.
-         * This allows us to easily add new tests in the future by simply defining
-         * a new ValidationRule and adding it to the map, without needing to change
-         * the core logic of the runTest method or the evaluation engine.
-         * The design of the ValidationRule and the rules map allows for a clean
-         * separation of the test definitions from the core evaluation logic,
-         * making the code more maintainable and extensible.
-         */
-        ValidationRule rule = rules.get(test);
+        ValidationRule rule = RULES.get(test);
         if (rule == null) {
-            FairTests.logWarning("No rule defined for  %s", test);
+            FairTests.logWarning("No rule defined for %s", test);
             return Result.INDETERMINATE;
         }
 
         return evaluateRule(dataset, rule, vocabulary);
     }
 
+    // -------------------------------------------------------------------------
+    // Core engine
+    // -------------------------------------------------------------------------
+
     /**
-     * CORE ENGINE
-     * The core engine for evaluating a validation rule against a dataset. It
-     * extracts the relevant values
-     * from the dataset based on the rule's field and extraction mode, and then
-     * checks if any of the extracted values match the approved vocabulary terms
-     * according to the specified match type.
-     * The method returns PASS if at least one approved term is found, FAIL if no
-     * approved terms are found, and logs relevant information at each step to aid
-     * in understanding the validation process.
-     * 
+     * Evaluates a {@link ValidationRule} against the dataset.
+     *
+     * <p>Extracts candidate values from the fields named in the rule. If no
+     * values are found, returns {@link Result#FAIL}. For
+     * {@link RuleType#PRESENCE_ANY} rules, returns {@link Result#PASS} if any
+     * non-blank value is present. For {@link RuleType#VOCAB_MATCH} rules,
+     * normalises both candidates and approved terms and returns
+     * {@link Result#PASS} on the first match.</p>
+     *
      * @param dataset    the JSON dataset to validate
      * @param rule       the validation rule to apply
-     * @param vocabulary the vocabulary service to use for retrieving approved terms
-     * @return the result of the validation
+     * @param vocabulary the vocabulary service for retrieving approved terms
+     * @return {@link Result#PASS} or {@link Result#FAIL}
      */
     private Result evaluateRule(JsonNode dataset,
             ValidationRule rule,
@@ -352,15 +294,14 @@ public class CdcJsonParser implements FormatParser {
             return Result.FAIL;
         }
 
-        // VOCAB MATCH
+        // VOCAB_MATCH
         Set<String> approved = normaliseSet(rule.vocabSupplier().apply(vocabulary));
 
         for (String val : values) {
             String norm = normalise(val);
 
             if (matches(norm, approved, rule.matchType())) {
-                FairTests.logInfo("Approved %s found: %s" ,
-                        rule.label(), val);
+                FairTests.logInfo("Approved %s found: %s", rule.label(), val);
                 return Result.PASS;
             }
         }
@@ -369,78 +310,9 @@ public class CdcJsonParser implements FormatParser {
         return Result.FAIL;
     }
 
-    /**
-     * Checks if a candidate string matches any of the approved strings based on the
-     * specified match type.
-     * The method supports two match types:
-     * - EXACT: Checks for an exact match
-     * - CONTAINS: Checks if the candidate contains any of the approved strings as a
-     * substring
-     * This allows for flexibility in handling cases where the candidate string may
-     * include additional context or qualifiers around the approved term, which is
-     * common in real-world datasets. For example, a candidate value of "Restricted
-     * - see documentation" would match an approved term of "Restricted" when using
-     * the CONTAINS match type.
-     * 
-     * @param candidate the string to check for a match against the approved terms
-     * @param approved  the set of approved strings
-     * @param type      the match type to use for the comparison (EXACT or CONTAINS)
-     * @return boolean true if a match is found based on the specified match type,
-     *         false otherwise
-     */
-    private boolean matches(String candidate, Set<String> approved, MatchType type) {
-        return switch (type) {
-            case EXACT -> approved.contains(candidate);
-            case CONTAINS -> approved.stream().anyMatch(candidate::contains);
-        };
-    }
-
-    /**
-     * Normalises a string by trimming whitespace, converting to lowercase, and
-     * collapsing multiple spaces into a single space. This is useful for improving
-     * the chances of matching candidate strings against approved terms in cases
-     * where there may be variations in formatting, such as extra spaces or
-     * differences in capitalization. By normalising both the candidate strings and
-     * the approved terms before comparison, we can achieve more robust matching
-     * that is less sensitive to minor formatting differences.
-     *
-     * @param s the string to normalise
-     * @return String the normalised string, or an empty string if the input is null
-     */
-    private String normalise(String s) {
-        if (s == null)
-            return "";
-        return s.trim().toLowerCase().replaceAll("\\s+", " ");
-    }
-
-    /**
-     * Normalises a set of strings by applying the normalise method to each string.
-     * This is useful for preparing the approved vocabulary terms for comparison
-     * against candidate strings, ensuring that both the approved terms and the
-     * candidate strings are in a consistent format for matching. By normalising the
-     * approved terms, we can improve the chances of successful matches even when
-     * there are variations in formatting in the original dataset.
-     * The method takes a set of strings as input and returns a new set containing
-     * the normalised versions of those strings. If the input set is null, it
-     * returns an empty set to avoid null pointer exceptions in the matching logic.
-     * 
-     * @param set the set of strings to normalise
-     * @return Set<String> the set of normalised strings, or an empty set if the
-     *         input is null
-     */
-    private Set<String> normaliseSet(Set<String> set) {
-        if (set == null)
-            return Set.of();
-        return set.stream().map(this::normalise).collect(Collectors.toSet());
-    }
-
-    /**
-     * SPECIAL CASES
-     * These methods handle specific test types that do not fit the standard pattern
-     * of extracting values from
-     * a specific field and comparing them against an approved vocabulary. 
-     */
-    
+    // -------------------------------------------------------------------------
+    // Bespoke test methods
+    // -------------------------------------------------------------------------
 
     /**
      * Validates ELSST keywords in the dataset against the ELSST vocabulary.
@@ -450,12 +322,12 @@ public class CdcJsonParser implements FormatParser {
      * contains the substring {@code "elsst"}.</p>
      *
      * <p>The language codes to validate against are read from the dataset's
-     * top-level {@code langAvailableIn} array (e.g.
-     * {@code ["en", "sv"]}). Validation is attempted for each language code
-     * in turn; the method returns {@link Result#PASS} as soon as any language
-     * produces a successful match. If {@code langAvailableIn} is absent,
-     * empty, or not an array, the method returns {@link Result#FAIL} because
-     * no language code is available to validate against.</p>
+     * top-level {@code langAvailableIn} array. Validation is attempted for
+     * each language code in turn; the method returns {@link Result#PASS} as
+     * soon as any language produces a successful match. If
+     * {@code langAvailableIn} is absent, empty, or not an array, the method
+     * returns {@link Result#FAIL} because no language code is available to
+     * validate against.</p>
      *
      * @param dataset    the JSON dataset to validate
      * @param vocabulary the vocabulary service to use for validation
@@ -463,7 +335,9 @@ public class CdcJsonParser implements FormatParser {
      *         ELSST term in any of the declared languages;
      *         {@link Result#FAIL} otherwise
      */
-    private Result checkElsstKeywords(JsonNode dataset, VocabularyService vocabulary) {
+    private Result checkElsstKeywords(JsonNode dataset,
+            VocabularyService vocabulary) {
+
         JsonNode keywords = dataset.path("keywords");
 
         if (!keywords.isArray())
@@ -480,17 +354,20 @@ public class CdcJsonParser implements FormatParser {
         JsonNode langAvailableIn = dataset.path("langAvailableIn");
 
         if (!langAvailableIn.isArray() || langAvailableIn.isEmpty()) {
-            FairTests.logWarning("No langAvailableIn codes found — cannot validate ELSST keywords");
+            FairTests.logWarning(
+                    "No langAvailableIn codes found — cannot validate "
+                    + "ELSST keywords");
             return Result.FAIL;
         }
 
         for (JsonNode langNode : langAvailableIn) {
             String lang = langNode.asText().trim();
-            if (lang.isEmpty()) {
+            if (lang.isEmpty())
                 continue;
-            }
             if (vocabulary.validateElsstKeywords(terms, lang) == Result.PASS) {
-                FairTests.logInfo("ELSST keywords validated successfully for language %s", lang);
+                FairTests.logInfo(
+                        "ELSST keywords validated successfully for "
+                        + "language %s", lang);
                 return Result.PASS;
             }
         }
@@ -499,155 +376,488 @@ public class CdcJsonParser implements FormatParser {
     }
 
     /**
-     * EXTRACTION STRATEGIES
-     * These methods implement the different strategies for extracting values from
-     * the JSON dataset based on the specified extraction mode in the
-     * ValidationRule. The
-     * extractMulti method takes a list of JSON paths and applies the appropriate
-     * extraction logic for each path based on the specified extraction mode. The
-     * extractPath method handles the extraction of values from a single JSON path,
-     * supporting both scalar
-     * values and arrays, and the extractRecursive method performs the actual
-     * traversal of the JSON structure based on the path parts, handling array
-     * syntax (e.g. 'field[]') to extract values from arrays of objects. The
-     * extraction logic is designed to be flexible and robust, allowing us to handle
-     * the various ways in which relevant information might be structured in the
-     * JSON datasets, based on our analysis of real-world datasets and the
-     * flexibility needed to accommodate the spec's suggestions and the reality of
-     * what we find in the wild.
-     * 
-     * @param root  the root JSON node to extract values from
-     * @param paths the list of JSON paths to extract values from, which can support
-     *              multiple paths for flexibility in handling different JSON
-     *              structures across datasets
-     * @return List<String> the list of extracted values from the specified paths in
-     *         the JSON dataset, which will be used for validation against the
-     *         approved vocabularies
+     * Checks whether the dataset references at least one resolvable FAIR
+     * vocabulary by scanning all vocabulary-bearing arrays for a non-blank
+     * {@code vocabUri} value that can be reached over HTTP.
+     *
+     * <p>The following top-level arrays are inspected:
+     * {@code classifications}, {@code keywords}, {@code unitTypes},
+     * {@code typeOfModeOfCollections}, and {@code typeOfTimeMethods}. For
+     * each entry, both a non-blank {@code vocab} name and a non-blank
+     * {@code vocabUri} must be present. The first {@code vocabUri} that
+     * resolves successfully returns {@link Result#PASS}.</p>
+     *
+     * @param dataset the JSON dataset to inspect
+     * @return {@link Result#PASS} if a resolvable vocabulary URI is found;
+     *         {@link Result#FAIL} if candidates are present but none resolve
+     *         or none have both required attributes;
+     *         {@link Result#INDETERMINATE} if an unexpected error occurs
+     */
+    private Result checkFairVocabulary(JsonNode dataset) {
+
+        try {
+            List<String> vocabArrays = List.of(
+                    "classifications",
+                    "keywords",
+                    "unitTypes",
+                    "typeOfModeOfCollections",
+                    "typeOfTimeMethods");
+
+            for (String field : vocabArrays) {
+                JsonNode array = dataset.path(field);
+                if (!array.isArray())
+                    continue;
+
+                for (JsonNode entry : array) {
+                    String vocab    = entry.path("vocab").asText("").trim();
+                    String vocabUri = entry.path("vocabUri").asText("").trim();
+
+                    if (vocab.isEmpty() || vocabUri.isEmpty())
+                        continue;
+
+                    if (!looksResolvable(vocabUri))
+                        continue;
+
+                    FairTests.logInfo(
+                            "Testing FAIR vocabulary %s at %s",
+                            vocab, vocabUri);
+
+                    if (resolves(vocabUri)) {
+                        FairTests.logInfo(
+                                "Resolvable FAIR vocabulary found: %s",
+                                vocabUri);
+                        return Result.PASS;
+                    }
+                }
+            }
+
+            FairTests.logInfo("No resolvable FAIR vocabularies found");
+            return Result.FAIL;
+
+        } catch (Exception e) {
+            FairTests.logWarning(
+                    "FAIR vocabulary check failed: %s", e.getMessage());
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Checks whether the dataset's metadata is grounded by attempting to
+     * resolve the {@code studyUrl} field over HTTP.
+     *
+     * <p>{@code studyUrl} is expected to be a persistent, resolvable URL
+     * (typically a DOI landing page) that grounds the metadata record in a
+     * retrievable resource. If the field is absent or blank, the method
+     * returns {@link Result#FAIL}. If the URL resolves successfully,
+     * {@link Result#PASS} is returned.</p>
+     *
+     * @param dataset the JSON dataset to inspect
+     * @return {@link Result#PASS} if {@code studyUrl} resolves;
+     *         {@link Result#FAIL} if the field is absent, blank, or does not
+     *         resolve; {@link Result#INDETERMINATE} if an unexpected error
+     *         occurs
+     */
+    private Result checkGroundedMetadata(JsonNode dataset) {
+
+        try {
+            String studyUrl = dataset.path("studyUrl").asText("").trim();
+
+            if (studyUrl.isEmpty()) {
+                FairTests.logInfo("No studyUrl found for grounded metadata check");
+                return Result.FAIL;
+            }
+
+            if (!looksResolvable(studyUrl)) {
+                FairTests.logInfo(
+                        "studyUrl does not use an open protocol: %s",
+                        studyUrl);
+                return Result.FAIL;
+            }
+
+            FairTests.logInfo(
+                    "Testing grounded metadata URL: %s", studyUrl);
+
+            if (resolves(studyUrl)) {
+                FairTests.logInfo(
+                        "Resolvable grounded metadata URL found: %s",
+                        studyUrl);
+                return Result.PASS;
+            }
+
+            FairTests.logInfo(
+                    "studyUrl did not resolve: %s", studyUrl);
+            return Result.FAIL;
+
+        } catch (Exception e) {
+            FairTests.logWarning(
+                    "Grounded metadata check failed: %s", e.getMessage());
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Checks whether any PID in the dataset's {@code pidStudies} array can be
+     * resolved via an open HTTP protocol.
+     *
+     * <p>For each entry in {@code pidStudies}, the {@code agency} and
+     * {@code pid} fields are read. A resolution URL is constructed using
+     * {@link #buildResolutionUrl(String, String)} (supporting DOI, Handle,
+     * and ARK agencies). The first URL that uses an open protocol and
+     * resolves successfully returns {@link Result#PASS}.</p>
+     *
+     * <p>Note: the {@code pid} values in the CDC JSON may include a
+     * scheme prefix (e.g. {@code "doi:10.17903/FK2/BVFEYX"}). The prefix
+     * is stripped before constructing the resolution URL.</p>
+     *
+     * @param dataset the JSON dataset to inspect
+     * @return {@link Result#PASS} if a resolvable PID is found;
+     *         {@link Result#FAIL} if no resolvable PID is found;
+     *         {@link Result#INDETERMINATE} if an unexpected error occurs
+     */
+    private Result checkRetrievableProtocol(JsonNode dataset) {
+
+        try {
+            JsonNode pidStudies = dataset.path("pidStudies");
+
+            if (!pidStudies.isArray() || pidStudies.isEmpty()) {
+                FairTests.logInfo("No pidStudies found");
+                return Result.FAIL;
+            }
+
+            for (JsonNode entry : pidStudies) {
+                String agency = entry.path("agency").asText("").trim();
+                String pid    = entry.path("pid").asText("").trim();
+
+                // Strip any scheme prefix, e.g. "doi:10.x/y" -> "10.x/y"
+                String value = stripPidPrefix(pid);
+
+                String resolved = buildResolutionUrl(agency, value);
+                if (resolved == null)
+                    continue;
+
+                FairTests.logInfo(
+                        "Testing PID resolution URL: %s", resolved);
+
+                if (looksResolvable(resolved) && resolves(resolved)) {
+                    FairTests.logInfo(
+                            "Resolvable open protocol found: %s", resolved);
+                    return Result.PASS;
+                }
+            }
+
+            FairTests.logInfo("No retrievable open protocol found");
+            return Result.FAIL;
+
+        } catch (Exception e) {
+            FairTests.logWarning(
+                    "Retrievable protocol check failed: %s", e.getMessage());
+            return Result.INDETERMINATE;
+        }
+    }
+
+    /**
+     * Checks whether the dataset is searchable by verifying that
+     * {@code studyXmlSourceUrl} contains an OAI-PMH {@code GetRecord}
+     * request, indicating the record is exposed via OAI-PMH and is therefore
+     * discoverable by harvesters.
+     *
+     * <p>A URL is accepted if it is non-blank and contains both
+     * {@code "oai"} and {@code "GetRecord"} as substrings. This matches the
+     * canonical OAI-PMH endpoint pattern used in CDC records (e.g.
+     * {@code .../oai?verb=GetRecord&identifier=...}).</p>
+     *
+     * @param dataset the JSON dataset to inspect
+     * @return {@link Result#PASS} if a valid OAI-PMH source URL is found;
+     *         {@link Result#FAIL} otherwise;
+     *         {@link Result#INDETERMINATE} if an unexpected error occurs
+     */
+    private Result checkSearchable(JsonNode dataset) {
+
+        try {
+            String sourceUrl = dataset.path("studyXmlSourceUrl")
+                    .asText("").trim();
+
+            if (sourceUrl.isEmpty()) {
+                FairTests.logInfo("No studyXmlSourceUrl found");
+                return Result.FAIL;
+            }
+
+            if (sourceUrl.contains("oai") && sourceUrl.contains("GetRecord")) {
+                FairTests.logInfo(
+                        "OAI-PMH source URL found: %s", sourceUrl);
+                return Result.PASS;
+            }
+
+            FairTests.logInfo(
+                    "studyXmlSourceUrl is not an OAI-PMH GetRecord URL: %s",
+                    sourceUrl);
+            return Result.FAIL;
+
+        } catch (Exception e) {
+            FairTests.logWarning(
+                    "Searchable check failed: %s", e.getMessage());
+            return Result.INDETERMINATE;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Shared HTTP helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Strips a scheme prefix from a PID value, returning the bare identifier.
+     *
+     * <p>For example, {@code "doi:10.17903/FK2/BVFEYX"} becomes
+     * {@code "10.17903/FK2/BVFEYX"}. If no colon-delimited prefix is found,
+     * or if the value is blank, the value is returned unchanged.</p>
+     *
+     * @param pid the raw PID value, possibly prefixed with a scheme
+     * @return the PID value with any leading scheme prefix removed
+     */
+    private String stripPidPrefix(String pid) {
+        if (pid == null || pid.isEmpty())
+            return pid;
+        int colon = pid.indexOf(':');
+        if (colon > 0 && colon < pid.length() - 1) {
+            String candidate = pid.substring(colon + 1);
+            // Only strip if the remainder doesn't start with "//"
+            // (which would indicate a full URI like "https://")
+            if (!candidate.startsWith("//"))
+                return candidate;
+        }
+        return pid;
+    }
+
+    /**
+     * Constructs a resolution URL for the given PID agency and identifier
+     * value. Supports DOI, Handle, and ARK agencies. Returns {@code null}
+     * for URNs, unrecognised agencies, or {@code null} inputs.
+     *
+     * @param agency the PID agency (e.g. {@code "DOI"}, {@code "Handle"},
+     *               {@code "ARK"}); case-insensitive
+     * @param value  the bare PID value, with any scheme prefix already
+     *               stripped
+     * @return the resolution URL, or {@code null} if not constructable
+     */
+    private String buildResolutionUrl(String agency, String value) {
+        if (agency == null || value == null)
+            return null;
+
+        return switch (agency.trim().toLowerCase()) {
+            case "doi"    -> "https://doi.org/" + value.trim();
+            case "handle" -> "https://hdl.handle.net/" + value.trim();
+            case "ark"    -> "https://n2t.net/" + value.trim();
+            default       -> null;
+        };
+    }
+
+    /**
+     * Returns {@code true} if the value is a non-blank string starting with
+     * {@code "http://"} or {@code "https://"}.
+     *
+     * @param value the string to check
+     * @return {@code true} if the value looks resolvable over HTTP
+     */
+    private boolean looksResolvable(String value) {
+        return value != null && !value.isBlank()
+                && (value.startsWith("http://")
+                        || value.startsWith("https://"));
+    }
+
+    /**
+     * Attempts an HTTP GET to the given URL and returns {@code true} if the
+     * response code is in the 200–399 range. Redirects are followed. Both
+     * connect and read timeouts are set to 5 seconds. Any exception causes
+     * the method to return {@code false}.
+     *
+     * @param url the URL to test
+     * @return {@code true} if the URL resolves successfully
+     */
+    private boolean resolves(String url) {
+        try {
+            HttpURLConnection conn =
+                    (HttpURLConnection) new URI(url).toURL().openConnection();
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            int code = conn.getResponseCode();
+            FairTests.logInfo(
+                    "Resolution check %s returned HTTP %d", url, code);
+            return code >= 200 && code < 400;
+
+        } catch (Exception e) {
+            FairTests.logInfo(
+                    "Resolution failed for %s: %s", url, e.getMessage());
+            return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Extraction helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Extracts candidate values from multiple JSON paths and returns them as
+     * a single flat list.
+     *
+     * @param root  the root JSON node
+     * @param paths the paths to extract from
+     * @return all extracted string values
      */
     private List<String> extractMulti(JsonNode root, List<String> paths) {
         List<String> results = new ArrayList<>();
-
         for (String path : paths) {
             results.addAll(extractPath(root, path));
         }
-
         return results;
     }
 
     /**
-     * Extracts values from a single JSON path. The path can include dot notation
-     * for nested fields and array syntax (e.g. 'field[]') to indicate that the
-     * field is an array of objects. The method traverses the JSON structure based
-     * on the path parts, extracting values according to the specified extraction
-     * mode. For scalar fields, it extracts the text value directly. For arrays of
-     * strings, it extracts each string value. For arrays of objects, it looks for
-     * common keys like 'value', 'term', 'label', 'name', 'agency', or 'pid' to
-     * extract the relevant text value from each object in the array. This method is
-     * designed to be flexible and robust, allowing us to handle the various ways in
-     * which relevant information might be structured in the JSON datasets, based on
-     * our analysis of real-world datasets and the flexibility needed to accommodate
-     * the spec's suggestions and the reality of what we find in the wild.
-     * 
-     * @param node the JSON node to extract values from
-     * @param path the JSON path to extract values from
-     * @return List<String> the list of extracted values from the specified JSON
-     *         path, which will be used for validation against the approved
-     *         vocabularies
+     * Extracts values from a single dot-notation JSON path.
+     * Array segments (e.g. {@code "creators[].name"}) are handled by
+     * iterating over every element of the array and continuing the
+     * traversal on each.
+     *
+     * @param node the node to start from
+     * @param path the dot-notation path (array brackets are stripped and
+     *             handled implicitly)
+     * @return the list of extracted string values
      */
     private List<String> extractPath(JsonNode node, String path) {
         List<String> results = new ArrayList<>();
-
         String[] parts = path.split("\\.");
-
         extractRecursive(node, parts, 0, results);
-
         return results;
     }
 
     /**
-     * Recursively extracts values from the JSON structure based on the path parts.
-     * 
-     * @param current the current JSON node in the traversal
-     * @param parts   the array of path parts
-     * @param index   the current index in the path parts array
-     * @param results the list to which extracted values are added
+     * Recursively traverses the JSON structure following the given path
+     * parts. When an array is encountered the traversal descends into each
+     * element at the same path depth. Leaf values are collected via
+     * {@link #extractValue(JsonNode, List)}.
+     *
+     * @param current the current node
+     * @param parts   the path segments
+     * @param index   the current segment index
+     * @param results the accumulator for extracted values
      */
-    private void extractRecursive(JsonNode current,
-                              String[] parts,
-                              int index,
-                              List<String> results) {
+    private void extractRecursive(JsonNode current, String[] parts,
+            int index, List<String> results) {
 
-    if (current == null || current.isNull()) return;
+        if (current == null || current.isNull())
+            return;
 
-    // FINAL STEP: extract values
-    if (index == parts.length) {
-        extractValue(current, results);
-        return;
-    }
-
-    String part = parts[index];
-
-    if (current.isArray()) {
-        // stay on same index, iterate elements
-        for (JsonNode item : current) {
-            extractRecursive(item, parts, index, results);
+        if (index == parts.length) {
+            extractValue(current, results);
+            return;
         }
-        return;
-    }
 
-    if (current.isObject()) {
-        JsonNode next = current.path(part);
+        String part = parts[index];
 
-        if (!next.isMissingNode()) {
-            extractRecursive(next, parts, index + 1, results);
+        if (current.isArray()) {
+            for (JsonNode item : current) {
+                extractRecursive(item, parts, index, results);
+            }
+            return;
+        }
+
+        if (current.isObject()) {
+            JsonNode next = current.path(part);
+            if (!next.isMissingNode()) {
+                extractRecursive(next, parts, index + 1, results);
+            }
         }
     }
-}
 
-/**
- * Extracts a string value from a JSON node, checking for common patterns such as:
- * - If the node is a textual value, return it directly.
- * - If the node is an object, check for common keys like 'value', 'term',
- * 'label', 'name', 'agency', or 'pid' and return the corresponding value if
- * found.
- * This method is used by the generic extraction strategy to handle the various
- * ways in which relevant information might be structured in the JSON datasets,
- * allowing us to extract the necessary values for validation against the approved
- * vocabularies even when the structure is not consistent across datasets.
- * The method adds any extracted values to the results list, which allows it to
- * handle cases where the node is an array of objects, extracting values from each
- * object in the array and adding them to the results list. This design allows for
- * flexibility in handling different JSON structures while still extracting the
- * relevant values needed for validation.
- * 
- * @param node the JSON node to extract the text from
- * @param results the list to which extracted values are added
- */
-private void extractValue(JsonNode node, List<String> results) {
-    if (node.isTextual()) {
-        String val = node.asText().trim();
-        if (!val.isEmpty()) results.add(val);
-        return;
-    }
-
-    if (node.isArray()) {
-        for (JsonNode item : node) {
-            extractValue(item, results); // flatten
+    /**
+     * Extracts a string value from a leaf node. Handles three cases:
+     * <ul>
+     * <li>Textual node: adds the text directly.</li>
+     * <li>Array node: recursively extracts from each element.</li>
+     * <li>Object node: checks for the first present key among
+     * {@code value}, {@code term}, {@code label}, {@code name},
+     * {@code agency}, and {@code publisher}, and adds its text.</li>
+     * </ul>
+     *
+     * @param node    the node to extract from
+     * @param results the accumulator for extracted values
+     */
+    private void extractValue(JsonNode node, List<String> results) {
+        if (node.isTextual()) {
+            String val = node.asText().trim();
+            if (!val.isEmpty())
+                results.add(val);
+            return;
         }
-        return;
-    }
 
-    if (node.isObject()) {
-        for (String key : List.of("value", "term", "label", "name", "agency", "publisher")) {
-            if (node.has(key)) {
-                String val = node.path(key).asText("").trim();
-                if (!val.isEmpty()) {
-                    results.add(val);
-                    return;
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                extractValue(item, results);
+            }
+            return;
+        }
+
+        if (node.isObject()) {
+            for (String key : List.of(
+                    "value", "term", "label", "name", "agency", "publisher")) {
+                if (node.has(key)) {
+                    String val = node.path(key).asText("").trim();
+                    if (!val.isEmpty()) {
+                        results.add(val);
+                        return;
+                    }
                 }
             }
         }
     }
-}
 
+    // -------------------------------------------------------------------------
+    // Normalisation and matching
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns {@code true} if the candidate matches the approved set using
+     * the given strategy.
+     *
+     * @param candidate the normalised candidate string
+     * @param approved  the set of normalised approved terms
+     * @param type      {@link MatchType#EXACT} or {@link MatchType#CONTAINS}
+     * @return {@code true} if a match is found
+     */
+    private boolean matches(String candidate, Set<String> approved,
+            MatchType type) {
+        return switch (type) {
+            case EXACT    -> approved.contains(candidate);
+            case CONTAINS -> approved.stream().anyMatch(candidate::contains);
+        };
+    }
+
+    /**
+     * Normalises a string by trimming whitespace, converting to lowercase,
+     * and collapsing internal runs of whitespace to a single space. Returns
+     * an empty string for {@code null} input.
+     *
+     * @param s the string to normalise
+     * @return the normalised string
+     */
+    private String normalise(String s) {
+        if (s == null)
+            return "";
+        return s.trim().toLowerCase().replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Applies {@link #normalise(String)} to every member of a set. Returns
+     * an empty set for {@code null} input.
+     *
+     * @param set the set to normalise
+     * @return a new set of normalised strings
+     */
+    private Set<String> normaliseSet(Set<String> set) {
+        if (set == null)
+            return Set.of();
+        return set.stream().map(this::normalise).collect(Collectors.toSet());
+    }
 }

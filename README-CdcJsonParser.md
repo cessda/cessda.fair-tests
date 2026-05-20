@@ -9,9 +9,10 @@ parses it using Jackson, and evaluates one `TestType` at a time, returning
 `PASS`, `FAIL`, or `INDETERMINATE`.
 
 The class is designed around a data-driven rule engine. Most tests are
-expressed as `ValidationRule` records held in an immutable `Map`; only
-two tests (`ELSST_KEYWORDS` and the derived `PROVENANCE` check) require
-bespoke logic and are handled by dedicated private methods.
+expressed as `ValidationRule` records held in an immutable `Map`. Five
+tests (`ELSST_KEYWORDS`, `FAIR_VOCABULARY`, `GROUNDED_METADATA`,
+`RETRIEVABLE_PROTOCOL`, and `SEARCHABLE`) require bespoke logic and are
+handled by dedicated private methods.
 
 ## Supported tests
 
@@ -19,37 +20,70 @@ The following `TestType` values are handled:
 
 - `ACCESS_RIGHTS` — checks the `dataAccess` field for an approved access
   rights term (CONTAINS match).
-- `PID` — checks the `pidStudies` field for an approved PID schema
-  (EXACT match).
-- `TOPIC_CLASS` — checks the `classifications` field for an approved
-  CESSDA topic classification term (EXACT match).
 - `DDI_ANALYSIS_UNIT` — checks the `unitTypes` field (EXACT match).
 - `DDI_COLLECTION_MODE` — checks the `typeOfModeOfCollections` field
   (EXACT match).
-- `DDI_TIME_METHOD` — checks the `typeOfTimeMethods` field (EXACT match).
 - `DDI_SAMPLEPROC` — checks `samplingProcedureFreeTexts` for an approved
   sampling procedure term (CONTAINS match, because this field holds free
   text rather than controlled vocabulary terms).
-- `PROVENANCE` — checks for the presence of any non-blank value across
-  `publisher.publisher`, `creators[].name`, or `funding[].agency`.
+- `DDI_TIME_METHOD` — checks the `typeOfTimeMethods` field (EXACT match).
 - `ELSST_KEYWORDS` — checks the `keywords` array for entries where
   `vocab` equals `"ELSST"` and `vocabUri` contains `"elsst"`, then
   validates the collected terms against the ELSST vocabulary via
-  `VocabularyService`.
+  `VocabularyService`. Validation is attempted for each language code in
+  `langAvailableIn`; the first successful match returns `PASS`.
+- `FAIR_VOCABULARY` — scans the `classifications`, `keywords`,
+  `unitTypes`, `typeOfModeOfCollections`, and `typeOfTimeMethods` arrays
+  for entries where both `vocab` and `vocabUri` are non-blank. The first
+  `vocabUri` that resolves successfully over HTTP returns `PASS`.
+- `FORMAL_KR_LANGUAGE` — checks for the presence of `studyXmlSourceUrl`,
+  which indicates that the record originates from a formal DDI XML source
+  accessible via OAI-PMH (PRESENCE_ANY).
+- `GROUNDED_METADATA` — attempts to resolve the `studyUrl` field over
+  HTTP. Returns `PASS` if the URL responds with HTTP 2xx or 3xx.
+- `PID` — checks the `pidStudies` field for an approved PID schema
+  (EXACT match against the `agency` value).
+- `PROVENANCE` — checks for the presence of any non-blank value across
+  `publisher.publisher`, `creators[].name`, or `funding[].agency`
+  (PRESENCE_ANY).
+- `RETRIEVABLE_PROTOCOL` — iterates `pidStudies`, constructs a resolution
+  URL from the `agency` and `pid` fields (DOI → `https://doi.org/`,
+  Handle → `https://hdl.handle.net/`, ARK → `https://n2t.net/`), and
+  returns `PASS` on the first URL that resolves over HTTP. Scheme
+  prefixes (e.g. `"doi:"`) are stripped from `pid` values before the URL
+  is built.
+- `SEARCHABLE` — checks that `studyXmlSourceUrl` is non-blank and
+  contains both `"oai"` and `"GetRecord"`, indicating the record is
+  exposed via an OAI-PMH endpoint and is discoverable by harvesters.
+- `STRUCTURED_METADATA` — checks for the presence of both `titleStudy`
+  and `abstract`, indicating a structurally complete CDC record
+  (PRESENCE_ANY).
+- `TOPIC_CLASS` — checks the `classifications` field for an approved
+  CESSDA topic classification term (EXACT match).
 
-Expected locations of fields:
+Expected field locations:
 
-| Test            | JSON location                                                         |
-| --------------- | --------------------------------------------------------------------- |
-| ACCESS_RIGHTS   | `dataAccess`                                                          |
-| PID             | `pidStudies[*].pid`                                                   |
-| ELSST_KEYWORDS  | `keywords[*].term / keywords[*].vocab / keywords[*].vocabUri` (+ lang)|
-| TOPIC_CLASS     | `classifications[*].term`                                             |
-| ANALYSIS_UNIT   | `unitTypes[*].term`                                                   |
-| COLLECTION_MODE | `typeOfModeOfCollections[*].term`                                     |
-| TIME_METHOD     | `typeOfTimeMethods[*].term`                                           |
-| SAMPLING_PROC   | `samplingProcedureFreeTexts / typeOfSamplingProcedures[*].term`       |
-| PROVENANCE      | `publisher.publisher / creators[*].name / funding[*].agency`          |
+| Test                 | JSON location                                              |
+| -------------------- | ---------------------------------------------------------- |
+| `ACCESS_RIGHTS`      | `dataAccess`                                               |
+| `DDI_ANALYSIS_UNIT`  | `unitTypes[*].term`                                        |
+| `DDI_COLLECTION_MODE`| `typeOfModeOfCollections[*].term`                          |
+| `DDI_SAMPLEPROC`     | `samplingProcedureFreeTexts`                               |
+| `DDI_TIME_METHOD`    | `typeOfTimeMethods[*].term`                                |
+| `ELSST_KEYWORDS`     | `keywords[*].term`, `keywords[*].vocab`,                   |
+|                      | `keywords[*].vocabUri`, `langAvailableIn[*]`               |
+| `FAIR_VOCABULARY`    | `classifications[*].vocabUri`, `keywords[*].vocabUri`,     |
+|                      | `unitTypes[*].vocabUri`, `typeOfModeOfCollections[*].vocabUri`, |
+|                      | `typeOfTimeMethods[*].vocabUri`                            |
+| `FORMAL_KR_LANGUAGE` | `studyXmlSourceUrl`                                        |
+| `GROUNDED_METADATA`  | `studyUrl`                                                 |
+| `PID`                | `pidStudies[*].agency`                                     |
+| `PROVENANCE`         | `publisher.publisher`, `creators[*].name`,                 |
+|                      | `funding[*].agency`                                        |
+| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].agency`, `pidStudies[*].pid`              |
+| `SEARCHABLE`         | `studyXmlSourceUrl`                                        |
+| `STRUCTURED_METADATA`| `titleStudy`, `abstract`                                   |
+| `TOPIC_CLASS`        | `classifications[*].term`                                  |
 
 ## Internal design
 
@@ -126,7 +160,10 @@ The method:
 1. Parses the stream into a `JsonNode` using Jackson's `ObjectMapper`.
 2. Returns `INDETERMINATE` immediately if the root object has no `id`
    field.
-3. Delegates `ELSST_KEYWORDS` to `checkElsstKeywords`.
+3. Dispatches bespoke test types via a `switch` statement:
+   `ELSST_KEYWORDS`, `FAIR_VOCABULARY`, `GROUNDED_METADATA`,
+   `RETRIEVABLE_PROTOCOL`, and `SEARCHABLE` each delegate to a
+   dedicated private method.
 4. Looks up the `ValidationRule` for all other test types; returns
    `INDETERMINATE` if no rule is defined.
 5. Calls `evaluateRule` and returns the result.
@@ -135,9 +172,9 @@ The method:
 
 | Value | Meaning |
 |-------|---------|
-| `PASS` | At least one approved term (or non-blank value) was found. |
-| `FAIL` | The relevant field(s) were present but no approved term matched. |
-| `INDETERMINATE` | The JSON could not be parsed, lacked an `id` field, or no rule exists for the requested test type. |
+| `PASS` | At least one approved term, non-blank value, or resolvable URL was found. |
+| `FAIL` | The relevant field(s) were present but no approved term matched, or no URL resolved. |
+| `INDETERMINATE` | The JSON could not be parsed, lacked an `id` field, no candidates were found, or no rule exists for the requested test type. |
 
 ## Dependencies
 
@@ -150,13 +187,19 @@ The method:
 
 ## Notes
 
-- The `rules` map is initialised as an immutable `Map.of(…)` at field
-  level; the class is therefore effectively stateless after construction
-  and safe to share across threads.
+- The `RULES` map is a `static final Map.ofEntries(…)`; the class is
+  therefore effectively stateless after construction and safe to share
+  across threads.
 - The `samplingProcedureFreeTexts` field uses a `CONTAINS` match because
   the spec field (`typeOfSamplingProcedures`) is not consistently used in
   practice and the actual field holds free text rather than controlled
   vocabulary terms.
+- The `FAIR_VOCABULARY`, `GROUNDED_METADATA`, and
+  `RETRIEVABLE_PROTOCOL` tests make outbound HTTP requests at runtime.
+  Both connect and read timeouts are set to 5 seconds per URL.
+- `RETRIEVABLE_PROTOCOL` strips scheme prefixes (e.g. `"doi:"`) from
+  `pid` values before building the resolution URL. URNs and unrecognised
+  agency values are silently skipped.
 - Adding a new vocabulary test requires only a new `ValidationRule` entry
-  in the `rules` map; no changes to `runTest` or `evaluateRule` are
-  needed.
+  in `RULES`; no changes to `runTest` or `evaluateRule` are needed.
+  
