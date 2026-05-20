@@ -46,17 +46,23 @@ Result runTest(TestType test, InputStream inputStream,
 
 ## Supported tests
 
-| `TestType` constant | What is checked |
-| ---------------------- | ---------------------------------------------------------------- |
-| `ACCESS_RIGHTS` | Approved access rights term is present. |
-| `PID` | Persistent identifier schema is from an approved list. |
-| `ELSST_KEYWORDS` | At least one ELSST controlled vocabulary keyword is present and valid. |
-| `TOPIC_CLASS` | A CESSDA topic classification term is present. |
-| `DDI_ANALYSIS_UNIT` | A DDI analysis unit vocabulary term is present. |
-| `DDI_COLLECTION_MODE` | A DDI collection mode vocabulary term is present. |
-| `DDI_TIME_METHOD` | A DDI time method vocabulary term is present. |
-| `DDI_SAMPLEPROC` | A DDI sampling procedure term is present. |
-| `PROVENANCE` | Publisher, creator, or funding information is present. |
+| `TestType` constant    | What is checked                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `ACCESS_RIGHTS`        | Approved access rights term is present.                                                                      |
+| `PID`                  | Persistent identifier schema is from an approved list.                                                       |
+| `ELSST_KEYWORDS`       | At least one ELSST controlled vocabulary keyword is present and valid.                                       |
+| `TOPIC_CLASS`          | A CESSDA topic classification term is present.                                                               |
+| `DDI_ANALYSIS_UNIT`    | A DDI analysis unit vocabulary term is present.                                                              |
+| `DDI_COLLECTION_MODE`  | A DDI collection mode vocabulary term is present.                                                            |
+| `DDI_TIME_METHOD`      | A DDI time method vocabulary term is present.                                                                |
+| `DDI_SAMPLEPROC`       | A DDI sampling procedure term is present.                                                                    |
+| `PROVENANCE`           | Publisher, creator, or funding information is present.                                                       |
+| `FAIR_VOCABULARY`      | FAIR-compliant controlled vocabulary URIs are present for classification, keyword, or methodological fields. |
+| `FORMAL_KR_LANGUAGE`   | Metadata is exposed in a formal knowledge representation language (machine-readable XML or JSON).            |
+| `GROUNDED_METADATA`    | Metadata contains a resolvable study or dataset landing page reference.                                      |
+| `RETRIEVABLE_PROTOCOL` | Persistent identifiers use a recognised retrievable protocol or resolver scheme.                             |
+| `SEARCHABLE`           | Metadata is exposed through a searchable or indexable endpoint URL.                                          |
+| `STRUCTURED_METADATA`  | Metadata contains structured descriptive fields such as title and abstract.                                  |
 
 ## Prerequisites
 

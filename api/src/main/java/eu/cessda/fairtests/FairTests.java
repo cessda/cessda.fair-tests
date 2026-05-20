@@ -37,51 +37,47 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 /**
- * <H2>FairTests</H2>
- * <P>
+ * FairTests
+ *
  * Orchestrator for FAIR-data compliance checks against metadata endpoints.
- * </P>
- * <P>
+ *
  * This class is responsible for three things only:
- * <OL>
- * <LI>Fetching the raw HTTP response from the supplied URL.</LI>
- * <LI>Sniffing the response format using {@link FormatSniffer}.</LI>
- * <LI>Delegating the requested {@link TestType} to the appropriate
- * {@link FormatParser} implementation via a {@code switch} expression.</LI>
- * </OL>
+ * 
+ * Fetching the raw HTTP response from the supplied URL.
+ * Sniffing the response format using {@link FormatSniffer}.
+ * Delegating the requested {@link TestType} to the appropriate
+ * {@link FormatParser} implementation via a {@code switch} expression.
+ * 
  * All XML-specific logic lives in {@link XmlParser}; all JSON-specific logic
- * lives in {@link OldCdcJsonParser}. Shared vocabulary/ELSST lookups live in
+ * lives in {@link CdcJsonParser}. Shared vocabulary/ELSST lookups live in
  * {@link VocabularyService}.
- * </P>
+ * 
  *
- * <H3>Supported formats</H3>
- * <UL>
- * <LI>XML — DDI Codebook 2.5, optionally wrapped in an OAI-PMH envelope
- * ({@link XmlParser})</LI>
- * <LI>JSON object / JSON array — stub implementation, ready for your schema
- * ({@link OldCdcJsonParser})</LI>
- * </UL>
+ * Supported formats
+ * 
+ * XML — DDI Codebook 2.5, optionally wrapped in an OAI-PMH envelope
+ * ({@link XmlParser})
+ * JSON object / JSON array — stub implementation, ready for your schema
+ * ({@link CdcJsonParser})
  *
- * <H3>Supported tests ({@link TestType})</H3>
- * <UL>
- * <LI>Access Rights compliance</LI>
- * <LI>Persistent Identifier (PID) schema validation</LI>
- * <LI>ELSST controlled vocabulary keyword validation</LI>
- * <LI>CESSDA Topic Classification vocabulary usage</LI>
- * <LI>DDI Analysis Unit vocabulary usage</LI>
- * <LI>DDI Collection Mode vocabulary usage</LI>
- * <LI>DDI Time Method vocabulary usage</LI>
- * <LI>DDI Sampling Procedure vocabulary usage</LI>
- * <LI>Provenance information presence</LI>
- * </UL>
+ * Supported tests ({@link TestType})
+ * 
+ * Access Rights compliance
+ * Persistent Identifier (PID) schema validation
+ * ELSST controlled vocabulary keyword validation
+ * CESSDA Topic Classification vocabulary usage
+ * DDI Analysis Unit vocabulary usage
+ * DDI Collection Mode vocabulary usage
+ * DDI Time Method vocabulary usage
+ * DDI Sampling Procedure vocabulary usage
+ * Provenance information presence
  *
- * <H3>Return values</H3>
- * <UL>
- * <LI>{@code pass} — the record meets the criteria</LI>
- * <LI>{@code fail} — the record does not meet the criteria</LI>
- * <LI>{@code indeterminate} — an error occurred, or the format is unsupported
- * for this test</LI>
- * </UL>
+ * Return values
+ * 
+ * {@code pass} — the record meets the criteria
+ * {@code fail} — the record does not meet the criteria
+ * {@code indeterminate} — an error occurred, or the format is unsupported
+ * for this test
  */
 public class FairTests {
 

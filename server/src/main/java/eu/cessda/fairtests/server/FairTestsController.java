@@ -64,7 +64,7 @@ public class FairTestsController {
      * Serves a Turtle file from the resources/static directory.
      * 
      * @param filename the name of the Turtle file (without the .ttl extension)
-     * @return the Turtle file as a ResponseEntity<Resource>
+     * @return the Turtle file as a {@code ResponseEntity<Resource>}
      */
     @GetMapping(path = "{filename}.ttl", produces = "text/turtle")
     public ResponseEntity<Resource> serveTurtleFile(@PathVariable("filename") String filename) {
@@ -106,7 +106,7 @@ public class FairTestsController {
      * The test to run is specified as a path variable, and the URL to test is
      * provided as a query parameter.
      * The method uses the FairTests service to execute the test and returns the
-     * results as a ResponseEntity<Result>.
+     * results as a {@code ResponseEntity<Result>}.
      *
      * @param test the test to run.
      * @param url  the URL to test.

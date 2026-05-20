@@ -22,34 +22,34 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * {@link FormatParser} implementation for HTML responses that embed a JSON-LD
+ * Implementation for HTML responses that embed a JSON-LD
  * block.
  *
- * <p>The parser scans the raw HTML byte stream for a {@code <script>} element
+ * The parser scans the raw HTML byte stream for a {@code <script>} element
  * with {@code id="json-ld"} and {@code type="application/ld+json"}, extracts
  * the text content between that opening tag and the next {@code </script>}
- * closing tag, then delegates all test logic to {@link OldCdcJsonParser} using
- * the extracted JSON as its input stream.</p>
+ * closing tag, then delegates all test logic to {@link CdcJsonParser} using
+ * the extracted JSON as its input stream.
  *
- * <p>If no such block is found the method returns
+ * If no such block is found the method returns
  * {@link Result#INDETERMINATE} and logs the reason; no exception is thrown.
  * Additional HTML-specific checks can be added in further {@code switch} cases
  * in {@link #runTest(TestType, InputStream, VocabularyService)} without
- * disturbing the JSON-LD extraction path.</p>
+ * disturbing the JSON-LD extraction path.
  *
- * <h3>Expected HTML fragment</h3>
+ * Expected HTML fragment
  * <pre>{@code
  * <script id="json-ld" type="application/ld+json">
  * { ... }
  * </script>
  * }</pre>
  *
- * <h3>Structural note</h3>
- * <p>This class intentionally mirrors the structure of {@link OldCdcJsonParser}:
+ * Structural note
+ * This class intentionally mirrors the structure of {@link CdcJsonParser}:
  * it implements {@link FormatParser}, uses the same method signature, and
  * returns the same {@link Result} values. Once the JSON-LD block has been
- * located, every test is handled by an inner {@link OldCdcJsonParser} instance,
- * so there is no duplication of vocabulary-matching logic.</p>
+ * located, every test is handled by an inner {@link CdcJsonParser} instance,
+ * so there is no duplication of vocabulary-matching logic.
  */
 public class HtmlParser implements FormatParser {
 
@@ -69,10 +69,10 @@ public class HtmlParser implements FormatParser {
     /**
      * {@inheritDoc}
      *
-     * <p>Reads the full HTML byte stream, locates the JSON-LD {@code <script>}
-     * block, and passes its content to {@link OldCdcJsonParser#runTest} for
+     * Reads the full HTML byte stream, locates the JSON-LD {@code <script>}
+     * block, and passes its content to {@link CdcJsonParser#runTest} for
      * evaluation. Returns {@link Result#INDETERMINATE} if the block cannot be
-     * found or the stream cannot be read.</p>
+     * found or the stream cannot be read.
      */
     @Override
     public Result runTest(TestType test, InputStream inputStream, VocabularyService vocabulary)
@@ -101,8 +101,8 @@ public class HtmlParser implements FormatParser {
      * Locates and returns the raw JSON text between the JSON-LD {@code <script>}
      * open tag and the following {@code </script>} close tag.
      *
-     * <p>The search is case-insensitive so that variant capitalisations of the
-     * tag (e.g. {@code <SCRIPT>}) are handled correctly.</p>
+     * The search is case-insensitive so that variant capitalisations of the
+     * tag (e.g. {@code <SCRIPT>}) are handled correctly.
      *
      * @param html the full HTML document as a string
      * @return the trimmed JSON text, or {@code null} if the block was not found
@@ -161,7 +161,7 @@ public class HtmlParser implements FormatParser {
 
     /**
      * Wraps a JSON string in a UTF-8 {@link ByteArrayInputStream} suitable for
-     * passing to {@link OldCdcJsonParser#runTest}.
+     * passing to {@link CdcJsonParser#runTest}.
      *
      * @param json the JSON text to wrap
      * @return a fresh {@link InputStream} over the UTF-8 bytes of {@code json}
