@@ -63,34 +63,34 @@ The following `TestType` values are handled:
 
 Expected field locations:
 
-| Test                 | JSON location                                              |
-| -------------------- | ---------------------------------------------------------- |
-| `ACCESS_RIGHTS`      | `dataAccess`                                               |
-| `DDI_ANALYSIS_UNIT`  | `unitTypes[*].term`                                        |
-| `DDI_COLLECTION_MODE`| `typeOfModeOfCollections[*].term`                          |
-| `DDI_SAMPLEPROC`     | `samplingProcedureFreeTexts`                               |
-| `DDI_TIME_METHOD`    | `typeOfTimeMethods[*].term`                                |
-| `ELSST_KEYWORDS`     | `keywords[*].term`, `keywords[*].vocab`,                   |
-|                      | `keywords[*].vocabUri`, `langAvailableIn[*]`               |
-| `FAIR_VOCABULARY`    | `classifications[*].vocabUri`, `keywords[*].vocabUri`,     |
-|                      | `unitTypes[*].vocabUri`, `typeOfModeOfCollections[*].vocabUri`, |
-|                      | `typeOfTimeMethods[*].vocabUri`                            |
-| `FORMAL_KR_LANGUAGE` | `studyXmlSourceUrl`                                        |
-| `GROUNDED_METADATA`  | `studyUrl`                                                 |
-| `PID`                | `pidStudies[*].agency`                                     |
-| `PROVENANCE`         | `publisher.publisher`, `creators[*].name`,                 |
-|                      | `funding[*].agency`                                        |
-| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].agency`, `pidStudies[*].pid`              |
-| `SEARCHABLE`         | `studyXmlSourceUrl`                                        |
-| `STRUCTURED_METADATA`| `titleStudy`, `abstract`                                   |
-| `TOPIC_CLASS`        | `classifications[*].term`                                  |
+| Test                 | JSON location                                                  |
+| -------------------- | -------------------------------------------------------------- |
+| `ACCESS_RIGHTS`      | `dataAccess`                                                   |
+| `DDI_ANALYSIS_UNIT`  | `unitTypes[*].term`                                            |
+| `DDI_COLLECTION_MODE`| `typeOfModeOfCollections[*].term`                              |
+| `DDI_SAMPLEPROC`     | `samplingProcedureFreeTexts`                                   |
+| `DDI_TIME_METHOD`    | `typeOfTimeMethods[*].term`                                    |
+| `ELSST_KEYWORDS`     | `keywords[*].term`, `keywords[*].vocab`,                       |
+|                      | `keywords[*].vocabUri`, `langAvailableIn[*]`                   |
+| `FAIR_VOCABULARY`    | `classifications[*].vocabUri`, `keywords[*].vocabUri`,         |
+|                      | `unitTypes[*].vocabUri`, `typeOfModeOfCollections[*].vocabUri`,|
+|                      | `typeOfTimeMethods[*].vocabUri`                                |
+| `FORMAL_KR_LANGUAGE` | `studyXmlSourceUrl`                                            |
+| `GROUNDED_METADATA`  | `studyUrl`                                                     |
+| `PID`                | `pidStudies[*].agency`                                         |
+| `PROVENANCE`         | `publisher.publisher`, `creators[*].name`,                     |
+|                      | `funding[*].agency`                                            |
+| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].agency`, `pidStudies[*].pid`                  |
+| `SEARCHABLE`         | `studyXmlSourceUrl`                                            |
+| `STRUCTURED_METADATA`| `titleStudy`, `abstract`                                       |
+| `TOPIC_CLASS`        | `classifications[*].term`                                      |
 
 ## Internal design
 
 ### Enumerations
 
 | Enum | Values | Purpose |
-|------|--------|---------|
+| ------ | -------- | --------- |
 | `MatchType` | `EXACT`, `CONTAINS` | Controls how extracted values are compared against approved vocabulary terms. `CONTAINS` allows for values that embed a controlled term alongside free text (e.g. `"Restricted — see documentation"`). |
 | `RuleType` | `VOCAB_MATCH`, `PRESENCE_ANY` | Distinguishes rules that validate against a vocabulary from rules that simply confirm a value is present. |
 

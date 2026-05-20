@@ -72,6 +72,34 @@ The following `TestType` values are handled:
 - `TOPIC_CLASS` — evaluates `//ddi:topcClas` using full text content;
   EXACT match against approved CESSDA topic classification terms.
 
+Expected field locations:
+
+| Test                   | XML location                                        |
+| ---------------------- | --------------------------------------------------- |
+| `ACCESS_RIGHTS`        | `stdyDscr.dataAccs.setAvail.accsPlac/@URI`          |
+| `DDI_ANALYSIS_UNIT`    | `stdyDscr.method.dataColl.anlyUnit`                 |
+| `DDI_COLLECTION_MODE`  | `stdyDscr.method.dataColl.collMode`                 |
+| `DDI_SAMPLEPROC`       | `stdyDscr.method.dataColl.sampProc`                 |
+| `DDI_TIME_METHOD`      | `stdyDscr.method.dataColl.timeMeth`                 |
+| `ELSST_KEYWORDS`       | `stdyDscr.stdyInfo.subject.keyword[@vocab="ELSST"]` |
+| `FAIR_VOCABULARY`      | `stdyDscr.stdyInfo.subject.topcClas/@vocabURI`,     |
+|                        | `stdyDscr.stdyInfo.subject.keyword/@vocabURI`,      |
+|                        | `stdyDscr.method.dataColl.anlyUnit/@vocabURI`,      |
+|                        | `stdyDscr.method.dataColl.collMode/@vocabURI`,      |
+|                        | `stdyDscr.method.dataColl.timeMeth/@vocabURI`       |
+| `FORMAL_KR_LANGUAGE`   | `codeBook/@sourceURL`                               |
+| `GROUNDED_METADATA`    | `stdyDscr.citation.titlStmt.IDNo`                   |
+| `PID`                  | `stdyDscr.citation.titlStmt.IDNo/@agency`           |
+| `PROVENANCE`           | `docDscr.citation.prodStmt.producer`,               |
+|                        | `stdyDscr.citation.rspStmt.AuthEnty`,               |
+|                        | `docDscr.citation.prodStmt.funding`                 |
+| `RETRIEVABLE_PROTOCOL` | `stdyDscr.citation.titlStmt.IDNo/@agency`,          |
+|                        | `stdyDscr.citation.titlStmt.IDNo`                   |
+| `SEARCHABLE`           | `codeBook/@sourceURL`                               |
+| `STRUCTURED_METADATA`  | `stdyDscr.citation.titlStmt.titl`,                  |
+|                        | `stdyDscr.stdyInfo.abstract`                        |
+| `TOPIC_CLASS`          | `stdyDscr.stdyInfo.subject.topcClas`                |
+
 ## Internal design
 
 ### Enumerations
@@ -166,7 +194,7 @@ The method:
 ## Return values
 
 | Value | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `PASS` | At least one node contained an approved term; or a required element or resolvable URL was found. |
 | `FAIL` | Relevant nodes were found but no approved term matched; or required elements or resolvable URLs were absent. |
 | `INDETERMINATE` | Parsing failed, an XPath error occurred, no candidates were found, or no rule exists for the requested test type. |
