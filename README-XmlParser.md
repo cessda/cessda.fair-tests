@@ -74,31 +74,35 @@ The following `TestType` values are handled:
 
 Expected field locations:
 
-| Test                   | XML location                                        |
-| ---------------------- | --------------------------------------------------- |
-| `ACCESS_RIGHTS`        | `stdyDscr.dataAccs.setAvail.accsPlac/@URI`          |
-| `DDI_ANALYSIS_UNIT`    | `stdyDscr.method.dataColl.anlyUnit`                 |
-| `DDI_COLLECTION_MODE`  | `stdyDscr.method.dataColl.collMode`                 |
-| `DDI_SAMPLEPROC`       | `stdyDscr.method.dataColl.sampProc`                 |
-| `DDI_TIME_METHOD`      | `stdyDscr.method.dataColl.timeMeth`                 |
-| `ELSST_KEYWORDS`       | `stdyDscr.stdyInfo.subject.keyword[@vocab="ELSST"]` |
-| `FAIR_VOCABULARY`      | `stdyDscr.stdyInfo.subject.topcClas/@vocabURI`,     |
-|                        | `stdyDscr.stdyInfo.subject.keyword/@vocabURI`,      |
-|                        | `stdyDscr.method.dataColl.anlyUnit/@vocabURI`,      |
-|                        | `stdyDscr.method.dataColl.collMode/@vocabURI`,      |
-|                        | `stdyDscr.method.dataColl.timeMeth/@vocabURI`       |
-| `FORMAL_KR_LANGUAGE`   | `codeBook/@sourceURL`                               |
-| `GROUNDED_METADATA`    | `stdyDscr.citation.titlStmt.IDNo`                   |
-| `PID`                  | `stdyDscr.citation.titlStmt.IDNo/@agency`           |
-| `PROVENANCE`           | `docDscr.citation.prodStmt.producer`,               |
-|                        | `stdyDscr.citation.rspStmt.AuthEnty`,               |
-|                        | `docDscr.citation.prodStmt.funding`                 |
-| `RETRIEVABLE_PROTOCOL` | `stdyDscr.citation.titlStmt.IDNo/@agency`,          |
-|                        | `stdyDscr.citation.titlStmt.IDNo`                   |
-| `SEARCHABLE`           | `codeBook/@sourceURL`                               |
-| `STRUCTURED_METADATA`  | `stdyDscr.citation.titlStmt.titl`,                  |
-|                        | `stdyDscr.stdyInfo.abstract`                        |
-| `TOPIC_CLASS`          | `stdyDscr.stdyInfo.subject.topcClas`                |
+| Test | DDI-C 2.5 XML location |
+| :---: | :---: |
+| `ACCESS_RIGHTS` | `/ddi:codeBook/ddi:stdyDscr/ddi:dataAccs/ddi:useStmt/ddi:conditions` |
+| `DDI_ANALYSIS_UNIT` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit` |
+| `DDI_COLLECTION_MODE` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode` |
+| `DDI_SAMPLEPROC` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc` |
+| `DDI_TIME_METHOD` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth` |
+| `ELSST_KEYWORDS` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword` |
+| `ELSST_KEYWORDS` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword/@vocab` |
+| `ELSST_KEYWORDS` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword/@vocabURI` |
+| `ELSST_KEYWORDS` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword/@xml:lang` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas/@vocab` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:keyword/@vocab` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:sumDscr/ddi:anlyUnit/ddi:concept/@vocab` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:collMode/ddi:concept/@vocab` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:timeMeth/ddi:concept/@vocab` |
+| `FAIR_VOCABULARY` | `/ddi:codeBook/ddi:stdyDscr/ddi:method/ddi:dataColl/ddi:sampProc/ddi:concept/@vocab` |
+| `FORMAL_KR_LANGUAGE` | `codeBook/@sourceURL` |
+| `GROUNDED_METADATA` | `/ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:holdings/@URI` |
+| `PID` | `/ddi:codeBook/ddi:stdyDscr/ddi:othrStdyMat/ddi:relPubl/ddi:citation/ddi:titlStmt/ddi:IDNo/@agency` |
+| `PROVENANCE` | `/ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:distStmt/ddi:distrbtr` |
+| `PROVENANCE` | `/ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:rspStmt/ddi:AuthEnty` |
+| `PROVENANCE` | `/ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:prodStmt/ddi:grantNo/@agency` |
+| `RETRIEVABLE_PROTOCOL` | `/ddi:codeBook/ddi:stdyDscr/ddi:othrStdyMat/ddi:relPubl/ddi:citation/ddi:titlStmt/ddi:IDNo` |
+| `RETRIEVABLE_PROTOCOL` | `/ddi:codeBook/ddi:stdyDscr/ddi:othrStdyMat/ddi:relPubl/ddi:citation/ddi:titlStmt/ddi:IDNo/@agency` |
+| `SEARCHABLE` | `codeBook/@sourceURL` |
+| `STRUCTURED_METADATA` | `/ddi:codeBook/ddi:stdyDscr/ddi:othrStdyMat/ddi:relPubl/ddi:citation/ddi:titlStmt/ddi:titl` |
+| `STRUCTURED_METADATA` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:abstract` |
+| `TOPIC_CLASS` | `/ddi:codeBook/ddi:stdyDscr/ddi:stdyInfo/ddi:subject/ddi:topcClas` |
 
 ## Internal design
 

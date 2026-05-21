@@ -63,27 +63,35 @@ The following `TestType` values are handled:
 
 Expected field locations:
 
-| Test                 | JSON location                                                  |
-| -------------------- | -------------------------------------------------------------- |
-| `ACCESS_RIGHTS`      | `dataAccess`                                                   |
-| `DDI_ANALYSIS_UNIT`  | `unitTypes[*].term`                                            |
-| `DDI_COLLECTION_MODE`| `typeOfModeOfCollections[*].term`                              |
-| `DDI_SAMPLEPROC`     | `samplingProcedureFreeTexts`                                   |
-| `DDI_TIME_METHOD`    | `typeOfTimeMethods[*].term`                                    |
-| `ELSST_KEYWORDS`     | `keywords[*].term`, `keywords[*].vocab`,                       |
-|                      | `keywords[*].vocabUri`, `langAvailableIn[*]`                   |
-| `FAIR_VOCABULARY`    | `classifications[*].vocabUri`, `keywords[*].vocabUri`,         |
-|                      | `unitTypes[*].vocabUri`, `typeOfModeOfCollections[*].vocabUri`,|
-|                      | `typeOfTimeMethods[*].vocabUri`                                |
-| `FORMAL_KR_LANGUAGE` | `studyXmlSourceUrl`                                            |
-| `GROUNDED_METADATA`  | `studyUrl`                                                     |
-| `PID`                | `pidStudies[*].agency`                                         |
-| `PROVENANCE`         | `publisher.publisher`, `creators[*].name`,                     |
-|                      | `funding[*].agency`                                            |
-| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].agency`, `pidStudies[*].pid`                  |
-| `SEARCHABLE`         | `studyXmlSourceUrl`                                            |
-| `STRUCTURED_METADATA`| `titleStudy`, `abstract`                                       |
-| `TOPIC_CLASS`        | `classifications[*].term`                                      |
+| Test | CDC JSON location |
+| :--- | :--- |
+| `ACCESS_RIGHTS` | `dataAccess` |
+| `DDI_ANALYSIS_UNIT` | `unitTypes[*].term` |
+| `DDI_COLLECTION_MODE` | `typeOfModeOfCollections[*].term` |
+| `DDI_SAMPLEPROC` | `samplingProcedureFreeTexts[*]` |
+| `DDI_TIME_METHOD` | `typeOfTimeMethods[*].term` |
+| `ELSST_KEYWORDS` | `keywords[*].term` |
+| `ELSST_KEYWORDS` | `keywords[*].vocab` |
+| `ELSST_KEYWORDS` | `keywords[*].vocabUri` |
+| `ELSST_KEYWORDS` | `langAvailableIn[*]` |
+| `FAIR_VOCABULARY` | `classifications[*].vocabUri` |
+| `FAIR_VOCABULARY` | `keywords[*].vocabUri` |
+| `FAIR_VOCABULARY` | `unitTypes[*].vocabUri` |
+| `FAIR_VOCABULARY` | `typeOfModeOfCollections[*].vocabUri` |
+| `FAIR_VOCABULARY` | `typeOfSamplingProcedures[*].vocabUri` |
+| `FAIR_VOCABULARY` | `typeOfTimeMethods[*].vocabUri` |
+| `FORMAL_KR_LANGUAGE` | `studyXmlSourceUrl` |
+| `GROUNDED_METADATA` | `studyUrl` |
+| `PID` | `pidStudies[*].agency` |
+| `PROVENANCE` | `publisher.publisher` |
+| `PROVENANCE` | `creators[*].name` |
+| `PROVENANCE` | `funding[*].agency` |
+| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].agency` |
+| `RETRIEVABLE_PROTOCOL` | `pidStudies[*].pid` |
+| `SEARCHABLE` | `studyXmlSourceUrl` |
+| `STRUCTURED_METADATA` | `titleStudy` |
+| `STRUCTURED_METADATA` | `abstract` |
+| `TOPIC_CLASS` | `classifications[*].term` |
 
 ## Internal design
 
@@ -171,7 +179,7 @@ The method:
 ## Return values
 
 | Value | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `PASS` | At least one approved term, non-blank value, or resolvable URL was found. |
 | `FAIL` | The relevant field(s) were present but no approved term matched, or no URL resolved. |
 | `INDETERMINATE` | The JSON could not be parsed, lacked an `id` field, no candidates were found, or no rule exists for the requested test type. |
