@@ -102,7 +102,7 @@ trim() {
   #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
   #   Needed for removing poorly interpreted newline sequences when running in more
   #   exotic environments such as mingw bash on Windows.
-  printf "%s" "$%s" | tr -d '[:space:]'
+  printf "%s" "${1}" | tr -d '[:space:]'
 }
 
 scriptDir="$(dirname "$0")"
