@@ -1,5 +1,5 @@
 
-openapi: 3.0.0
+openapi: 3.0.3
 info:
   version: "1.0.1"
   title: "Metadata uses CESSDA Access Rights Vocabulary."
@@ -32,9 +32,10 @@ servers:
 components:
   schemas:
     schemas:
+      type: object
       required:
         - resource_identifier
       properties:
-      - resource_identifier:
+        resource_identifier:
           type: string
           description: the GUID being tested
