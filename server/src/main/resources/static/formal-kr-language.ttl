@@ -1,8 +1,8 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
   version: "1.0.0"
   title: " Checks whether records contain metadata that is expressed in a formal language (weak variant)."
-  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.xxxx"
+  x-tests_metric: "https://doi.org/10.25504/FAIRsharing.7609"
   description: >-
     "Checks for the presence of a formal KR language in the document. The test first checks if the document uses a supported namespace, which is a strong indicator that it is using a formal language."
   x-applies_to_principle: "https://doi.org/10.25504/FAIRsharing.ec5648"
@@ -31,9 +31,10 @@ servers:
 components:
   schemas:
     schemas:
+      type: object
       required:
         - resource_identifier
       properties:
-      - resource_identifier:
+        resource_identifier:
           type: string
           description: the GUID being tested
