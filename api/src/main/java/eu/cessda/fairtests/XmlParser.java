@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -168,7 +169,7 @@ public class XmlParser implements FormatParser {
      * @param doc the XML document for which to detect the DDI namespace
      * @return the DDI namespace URI used in the document, or null if not found
      * @throws XPathExpressionException if an error occurs during XPath
-     *         expression evaluation
+     *                                  expression evaluation
      */
 
     private String detectDdiNamespace(Document doc)
@@ -332,14 +333,14 @@ public class XmlParser implements FormatParser {
      * steps and any issues encountered, which can be helpful for debugging and
      * understanding why certain tests pass or fail.
      *
-     * @param test the type of test to run, which determines the validation
-     *         logic to apply to the XML document
+     * @param test        the type of test to run, which determines the validation
+     *                    logic to apply to the XML document
      * @param inputStream the input stream containing the XML document to test
-     * @param vocabulary the vocabulary service to use for validating extracted
-     *         values
+     * @param vocabulary  the vocabulary service to use for validating extracted
+     *                    values
      * @return the result of the test
      * @throws IOException if an error occurs while reading the input stream or
-     *         parsing the XML document
+     *                     parsing the XML document
      */
 
     @Override
@@ -349,19 +350,34 @@ public class XmlParser implements FormatParser {
         Document doc = parse(inputStream);
 
         switch (test) {
-            case ELSST_KEYWORDS      -> { return checkElsstKeywords(doc, vocabulary); }
-            case FAIR_VOCABULARY     -> { return checkFairVocabulary(doc); }
-            case FORMAL_KR_LANGUAGE  -> { return checkFormalLanguage(doc); }
-            case GROUNDED_METADATA   -> { return checkGroundedMetadata(doc); }
-            case PROVENANCE          -> { return checkProvenance(doc); }
-            case RETRIEVABLE_PROTOCOL -> { return checkRetrievableProtocol(doc); }
-            case SEARCHABLE          -> { return checkSearchable(doc); }
+            case ELSST_KEYWORDS -> {
+                return checkElsstKeywords(doc, vocabulary);
+            }
+            case FAIR_VOCABULARY -> {
+                return checkFairVocabulary(doc);
+            }
+            case FORMAL_KR_LANGUAGE -> {
+                return checkFormalLanguage(doc);
+            }
+            case GROUNDED_METADATA -> {
+                return checkGroundedMetadata(doc);
+            }
+            case PROVENANCE -> {
+                return checkProvenance(doc);
+            }
+            case RETRIEVABLE_PROTOCOL -> {
+                return checkRetrievableProtocol(doc);
+            }
+            case SEARCHABLE -> {
+                return checkSearchable(doc);
+            }
             case STRUCTURED_METADATA -> {
                 return hasSupportedDdiNamespace(doc)
                         ? Result.PASS
                         : Result.FAIL;
             }
-            default -> { /* fall through to rules-based evaluation */ }
+            default -> {
+                /* fall through to rules-based evaluation */ }
         }
 
         ValidationRule rule = RULES.get(test);
@@ -387,10 +403,10 @@ public class XmlParser implements FormatParser {
      * method also logs detailed information about its processing steps and any
      * issues encountered for debugging purposes.
      *
-     * @param rule the validation rule to evaluate
-     * @param doc the XML document to evaluate against
+     * @param rule       the validation rule to evaluate
+     * @param doc        the XML document to evaluate against
      * @param vocabulary the vocabulary service to use for validating extracted
-     *         values
+     *                   values
      * @return Result
      */
 
@@ -448,10 +464,10 @@ public class XmlParser implements FormatParser {
      *
      * @param node the XML node from which to extract a value
      * @param rule the validation rule that specifies the extraction strategy
-     *         and             any relevant parameters (e.g. attribute name for
-     *         ATTRIBUTE             strategy)
+     *             and any relevant parameters (e.g. attribute name for
+     *             ATTRIBUTE strategy)
      * @return Stringthe extracted value as a String, or null if extraction
-     *         fails or         is not applicable
+     *         fails or is not applicable
      */
 
     private String extract(Node node, ValidationRule rule) {
@@ -508,23 +524,23 @@ public class XmlParser implements FormatParser {
      * is a strong indicator that it is using a formal language. If a supported
      * DDI namespace is detected, it then checks for the presence of schema
      * grounding by looking for schemaLocation attributes that reference known
-     * DDI schemas. If schema grounding is detected, it returns Result.PASS; if
-     * a supported DDI namespace is detected but no schema grounding is found,
-     * it still returns Result.PASS based on the assumption that the presence of
-     * a recognised DDI namespace implies the use of a formal language, even if
-     * schema grounding is not explicitly indicated. If no supported DDI
-     * namespace is detected, it returns Result.FAIL, indicating that the
-     * document is unlikely to be using a formal language. If an error occurs
-     * during processing (e.g. due to a malformed document), it catches the
-     * exception and returns Result.INDETERMINATE, indicating that it cannot
-     * determine the presence of a formal language due to an error. The method
-     * also logs detailed information about its processing steps and any issues
-     * encountered for debugging purposes.
+     * DDI schemas, including the xsi:schemaLocation attribute on the
+     * /ddi:codeBook root element for DDI Codebook 2.5. If schema grounding is
+     * detected, it returns Result.PASS; if a supported DDI namespace is detected
+     * but no schema grounding is found, it still returns Result.PASS based on
+     * the assumption that the presence of a recognised DDI namespace implies the
+     * use of a formal language, even if schema grounding is not explicitly
+     * indicated. If no supported DDI namespace is detected, it returns
+     * Result.FAIL, indicating that the document is unlikely to be using a formal
+     * language. If an error occurs during processing (e.g. due to a malformed
+     * document), it catches the exception and returns Result.INDETERMINATE,
+     * indicating that it cannot determine the presence of a formal language due
+     * to an error. The method also logs detailed information about its
+     * processing steps and any issues encountered for debugging purposes.
      *
-     * @param doc the XML document to check
+     * @param doc the XML document to check for the presence of a formal KR language
      * @return the result of the formal language check
      */
-
     private Result checkFormalLanguage(Document doc) {
 
         try {
@@ -556,6 +572,58 @@ public class XmlParser implements FormatParser {
             }
 
             boolean hasSchema = !extractSchemaLocations(doc).isEmpty();
+
+            FairTests.logInfo(
+                    "Formal XML language detected: %s",
+                    ddiNamespace);
+
+            if (hasSchema) {
+                /* TODO: INCLUDE CHECK FOR DDI CODEBOOK 2.6 SCHEMA LOCATION
+                 *
+                 * Also check /ddi:codeBook/@xsi:schemaLocation for DDI
+                 * Codebook 2.5 schema grounding, which may not be captured
+                 * by extractSchemaLocations().
+                 */
+
+                XPath xPath = createXPath(doc);
+
+                NamespaceContext nsContext = new NamespaceContext() {
+                    @Override
+                    public String getNamespaceURI(String prefix) {
+                        return switch (prefix) {
+                            case "ddi" -> "ddi:codebook:2_5";
+                            case "xsi" -> XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI;
+                            default -> XMLConstants.NULL_NS_URI;
+                        };
+                    }
+
+                    @Override
+                    public String getPrefix(String namespaceURI) {
+                        return null;
+                    }
+
+                    @Override
+                    public Iterator<String> getPrefixes(String namespaceURI) {
+                        return null;
+                    }
+                };
+
+                xPath.setNamespaceContext(nsContext);
+
+                String schemaLocationValue = (String) xPath.evaluate(
+                        "/ddi:codeBook/@xsi:schemaLocation",
+                        doc,
+                        XPathConstants.STRING);
+
+                if (schemaLocationValue != null && schemaLocationValue.contains(
+                        "ddi:codebook:2_5 http://www.ddialliance.org/Specification/DDI-Codebook/2.5/XMLSchema/codebook.xsd")) {
+
+                    FairTests.logInfo(
+                            "DDI Codebook 2.5 schema grounding detected via codeBook/@xsi:schemaLocation");
+
+                    hasSchema = true;
+                }
+            }
 
             FairTests.logInfo(
                     "Formal XML language detected: %s",
@@ -601,8 +669,8 @@ public class XmlParser implements FormatParser {
      *
      * @param doc the XML document to check for FAIR vocabulary linkages
      * @return Result indicating whether resolvable FAIR vocabulary linkages are
-     *         found (PASS),         candidates are present but not resolvable
-     *         (FAIL), or no candidates         found/error         occurs
+     *         found (PASS), candidates are present but not resolvable
+     *         (FAIL), or no candidates found/error occurs
      *         (INDETERMINATE)
      */
 
@@ -706,16 +774,16 @@ public class XmlParser implements FormatParser {
      *
      * @param doc the XML document to check for provenance information
      * @return Result indicating whether provenance information is present
-     *         (PASS),         likely missing (FAIL), or indeterminate due to an
-     *         error         (INDETERMINATE)
+     *         (PASS), likely missing (FAIL), or indeterminate due to an
+     *         error (INDETERMINATE)
      */
 
     private Result checkProvenance(Document doc) {
         try {
             XPath xpath = createXPath(doc);
             boolean hasPublisher = hasXPath(doc, xpath, "//ddi:distrbtr");
-            boolean hasCreator   = hasXPath(doc, xpath, "//ddi:AuthEnty");
-            boolean hasFunding   = hasXPath(doc, xpath, "//ddi:grantNo");
+            boolean hasCreator = hasXPath(doc, xpath, "//ddi:AuthEnty");
+            boolean hasFunding = hasXPath(doc, xpath, "//ddi:grantNo");
 
             if (hasPublisher || hasCreator || hasFunding) {
                 FairTests.logInfo("Provenance found");
@@ -760,12 +828,12 @@ public class XmlParser implements FormatParser {
      * maintain the integrity of the test and ensures that it is specifically
      * checking for compliance with the ELSST controlled vocabulary.
      *
-     * @param doc the XML document to check for ELSST keywords
+     * @param doc        the XML document to check for ELSST keywords
      * @param vocabulary the vocabulary service to use for validating ELSST
-     *         keywords
+     *                   keywords
      * @return Result indicating whether valid ELSST keywords are found (PASS),
      *         candidates are found but none are valid (FAIL), or no candidates
-     *         are         found or an error occurs (INDETERMINATE)
+     *         are found or an error occurs (INDETERMINATE)
      */
 
     private Result checkElsstKeywords(Document doc, VocabularyService vocabulary) {
@@ -849,8 +917,8 @@ public class XmlParser implements FormatParser {
      *
      * @param doc the XML document to check for retrievable protocol identifiers
      * @return Result indicating whether a resolvable open protocol identifier
-     *         is         found (PASS),         candidates are found but none
-     *         are retrievable (FAIL),         or no candidates are found or an
+     *         is found (PASS), candidates are found but none
+     *         are retrievable (FAIL), or no candidates are found or an
      *         error occurs (INDETERMINATE)
      */
 
@@ -935,7 +1003,7 @@ public class XmlParser implements FormatParser {
      *
      * @param doc the XML document to check for searchable metadata
      * @return Result indicating whether searchable metadata is present (PASS),
-     *         likely missing (FAIL),         or indeterminate due to an error
+     *         likely missing (FAIL), or indeterminate due to an error
      *         (INDETERMINATE)
      */
 
@@ -999,7 +1067,7 @@ public class XmlParser implements FormatParser {
      *
      * @param doc the XML document to check for grounded metadata
      * @return Result indicating whether resolvable namespaces are found (PASS),
-     *         candidates are found but none are resolvable (FAIL),         or
+     *         candidates are found but none are resolvable (FAIL), or
      *         if no candidates are found or an error occurs (INDETERMINATE).
      */
 
@@ -1066,11 +1134,11 @@ public class XmlParser implements FormatParser {
      * schema locations to the set, which helps to focus the check on valid
      * candidates that may be resolvable.
      *
-     * @param node the current XML node being processed in the DOM tree
-     *         traversal
+     * @param node      the current XML node being processed in the DOM tree
+     *                  traversal
      * @param locations the set of schema locations collected so far, which will
-     *         be                  updated with any new locations found during
-     *         the traversal
+     *                  be updated with any new locations found during
+     *                  the traversal
      */
 
     private void collectSchemaLocations(Node node, Set<String> locations) {
@@ -1182,11 +1250,11 @@ public class XmlParser implements FormatParser {
      * null or blank namespace URIs to the set, which helps to focus the check
      * on valid namespaces that may be resolvable.
      *
-     * @param node the current XML node being processed in the DOM tree
-     *         traversal
+     * @param node       the current XML node being processed in the DOM tree
+     *                   traversal
      * @param namespaces the set of namespace URIs collected so far, which will
-     *         be                   updated with any new namespaces found during
-     *         the traversal
+     *                   be updated with any new namespaces found during
+     *                   the traversal
      */
 
     private void collectNamespaces(Node node, Set<String> namespaces) {
@@ -1229,7 +1297,7 @@ public class XmlParser implements FormatParser {
      *
      * @param ns the namespace URI to check
      * @return boolean indicating whether the namespace is a common
-     *         infrastructure         namespace         that should be ignored
+     *         infrastructure namespace that should be ignored
      */
 
     private boolean isInfrastructureNamespace(String ns) {
@@ -1307,8 +1375,8 @@ public class XmlParser implements FormatParser {
      * @param inputStream the InputStream containing the XML content to parse
      * @return Document representing the parsed XML document
      * @throws IOException if an error occurs while reading the input stream or
-     *         if                     the XML content is malformed and cannot be
-     *         parsed                     successfully
+     *                     if the XML content is malformed and cannot be
+     *                     parsed successfully
      */
 
     private Document parse(InputStream inputStream) throws IOException {
@@ -1343,12 +1411,12 @@ public class XmlParser implements FormatParser {
      * criteria.
      *
      * @param candidate the string value extracted from the XML document that we
-     *         want to validate against the approved terms
-     * @param approved the set of approved strings to compare against
-     * @param type the match type to use for comparison
+     *                  want to validate against the approved terms
+     * @param approved  the set of approved strings to compare against
+     * @param type      the match type to use for comparison
      * @return boolean indicating whether the candidate matches any of the
-     *         approved         terms according to the specified match type
-     *         (true if a match is         found, false otherwise)
+     *         approved terms according to the specified match type
+     *         (true if a match is found, false otherwise)
      */
 
     private boolean matches(String candidate, Set<String> approved, MatchType type) {
@@ -1439,12 +1507,12 @@ public class XmlParser implements FormatParser {
      * existence of nodes based on an XPath expression, making the searchable
      * metadata check cleaner and more focused on its specific logic.
      *
-     * @param doc the XML document to evaluate
-     * @param xpath the XPath object for evaluating the expression
+     * @param doc        the XML document to evaluate
+     * @param xpath      the XPath object for evaluating the expression
      * @param expression the XPath expression to evaluate
      * @return true if any nodes are found, false otherwise
      * @throws XPathExpressionException if an error occurs during XPath
-     *         evaluation
+     *                                  evaluation
      */
 
     private boolean hasXPath(
@@ -1472,8 +1540,8 @@ public class XmlParser implements FormatParser {
      * resolvability based on the identifiers found in the XML document.
      *
      * @param agency the agency attribute from the "ddi:IDNo" element, which
-     *         indicates the type of identifier (e.g. DOI, Handle, ARK)
-     * @param value the value of the identifier
+     *               indicates the type of identifier (e.g. DOI, Handle, ARK)
+     * @param value  the value of the identifier
      * @return the resolution URL, or null if the agency is not recognized or if
      *         either the agency or value is null
      */

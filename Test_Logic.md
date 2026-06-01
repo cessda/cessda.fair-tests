@@ -15,8 +15,8 @@ Each test supports three input formats:
   delegates to `CdcJsonParser`.
 
 The format is detected automatically from the response body. The same
-nine tests are available for all three formats; the metadata location and
-field names differ per format as described in each section below.
+fifteen tests are available for all three formats; the metadata location
+and field names differ per format as described in each section below.
 
 ## Access Rights Validation (access-rights)
 
@@ -169,8 +169,11 @@ The test uses a two-phase validation approach.
   - The `vocabUri` field contains `"elsst"` (substring match).
 - Candidate keyword texts are collected from the `term` field of
   matching elements.
-- The collected terms are passed to `VocabularyService
-  .validateElsstKeywords` with the language code `"en"`.
+- The language codes to validate against are read from the top-level
+  `langAvailableIn` array. Validation is attempted for each code in
+  turn; the test passes as soon as any language produces a match.
+- If `langAvailableIn` is absent or empty, the test returns `FAIL`
+  because no language code is available to validate against.
 
 ### Pass criteria (elsst-keywords)
 
@@ -502,3 +505,296 @@ An error occurred whilst fetching or processing the metadata.
 - This is a more lenient test than the original specification, which
   required both author and publisher to be mandatory; at least one
   provenance element must be present for the record to pass.
+
+## FAIR Vocabulary Validation (fair-vocabulary)
+
+**Purpose:** Checks whether a record references at least one resolvable
+controlled vocabulary by a URI.
+
+### XML (fair-vocabulary)
+
+**Metadata location:** any element carrying a `vocabURI` attribute
+
+**Validation logic:**
+
+- All elements carrying a `vocabURI` attribute are located using XPath
+  (`//*[@vocabURI]`).
+- For each element, both the `vocab` attribute (vocabulary name) and
+  `vocabURI` attribute (vocabulary URI) must be non-blank.
+- Each qualifying URI is tested with an HTTP GET request. The first URI
+  that returns a 2xx or 3xx response returns `PASS`.
+- URIs that do not begin with `http://` or `https://` are skipped.
+
+### CDC JSON and HTML/JSON-LD (fair-vocabulary)
+
+**Metadata location:** `vocab` and `vocabUri` fields within the
+`classifications`, `keywords`, `unitTypes`, `typeOfModeOfCollections`,
+and `typeOfTimeMethods` arrays
+
+**Validation logic:**
+
+- Each of the five arrays is scanned for entries where both the `vocab`
+  field (vocabulary name) and `vocabUri` field (vocabulary URI) are
+  non-blank.
+- Each qualifying URI is tested with an HTTP GET request. The first URI
+  that returns a 2xx or 3xx response returns `PASS`.
+- URIs that do not begin with `http://` or `https://` are skipped.
+
+### Pass criteria (fair-vocabulary)
+
+At least one qualifying vocabulary URI resolves successfully over HTTP.
+
+### Fail criteria (fair-vocabulary)
+
+Qualifying entries are present but no vocabulary URI resolves, or all
+entries are missing one of the required fields.
+
+### Indeterminate result (fair-vocabulary)
+
+No qualifying entries were found, or an unexpected error occurred.
+
+**Key implementation note:** Both formats require a vocabulary name
+(`vocab`/`vocab` attribute) alongside the URI. A bare URI with no
+vocabulary name does not satisfy the test.
+
+## Formal Knowledge Representation Language (formal-kr-language)
+
+**Purpose:** Verifies that the metadata uses a recognised formal,
+machine-readable language or schema.
+
+### XML (formal-kr-language)
+
+**Validation logic:**
+
+- The namespace URI declared on the document root element is compared
+  against the set of supported DDI Codebook namespace URIs held in
+  `SUPPORTED_DDI_NAMESPACES`.
+- If a supported namespace is found, the document is additionally
+  checked for an `xsi:schemaLocation` attribute that reference known
+  DDI schemas, including the `xsi:schemaLocation` attribute on the
+  `/ddi:codeBook` root element for DDI Codebook 2.5. If schema grounding
+  is detected, it returns `PASS`.
+- If no supported DDI namespace is detected, `FAIL` is returned.
+
+### CDC JSON and HTML/JSON-LD (formal-kr-language)
+
+**Metadata location:** `studyXmlSourceUrl` (top-level field)
+
+**Validation logic:**
+
+- The `studyXmlSourceUrl` field is checked for a non-blank value using
+  a `PRESENCE_ANY` rule.
+- Its presence indicates that the record originates from a DDI XML
+  source accessible via OAI-PMH, which constitutes a formal knowledge
+  representation language.
+
+### Pass criteria (formal-kr-language)
+
+For XML: a supported DDI namespace URI is present on the document root.
+For JSON: the `studyXmlSourceUrl` field is non-blank.
+
+### Fail criteria (formal-kr-language)
+
+For XML: no supported DDI namespace is found. For JSON: the
+`studyXmlSourceUrl` field is absent or blank.
+
+### Indeterminate result (formal-kr-language)
+
+An unexpected error occurred whilst processing the metadata.
+
+## Grounded Metadata Validation (grounded-metadata)
+
+**Purpose:** Checks whether the metadata is grounded in at least one
+resolvable, machine-readable resource.
+
+### XML (grounded-metadata)
+
+**Validation logic:**
+
+- All namespace URIs used anywhere in the document are collected by
+  traversing the DOM tree (both element and attribute namespaces).
+- All URLs from `xsi:schemaLocation` and
+  `xsi:noNamespaceSchemaLocation` attributes are collected.
+- Common infrastructure namespaces are excluded from consideration:
+  those beginning with `http://www.w3.org/`,
+  `http://www.openarchives.org/`, `http://www.loc.gov/`, or
+  `http://purl.org/dc/`, and any URI containing `"xml"`.
+- Each remaining candidate URL is tested with an HTTP GET request.
+  The first URL that returns a 2xx or 3xx response returns `PASS`.
+
+### CDC JSON and HTML/JSON-LD (grounded-metadata)
+
+**Metadata location:** `studyUrl` (top-level field)
+
+**Validation logic:**
+
+- The `studyUrl` field is read. If absent or blank, `FAIL` is returned.
+- If the value does not begin with `http://` or `https://`, `FAIL` is
+  returned.
+- The URL is tested with an HTTP GET request. A 2xx or 3xx response
+  returns `PASS`.
+
+### Pass criteria (grounded-metadata)
+
+At least one candidate URL resolves successfully over HTTP.
+
+### Fail criteria (grounded-metadata)
+
+Candidate URLs are present but none resolve, or no candidates are found
+after filtering.
+
+### Indeterminate result (grounded-metadata)
+
+An unexpected error occurred whilst processing the metadata or making
+HTTP requests.
+
+**Key implementation note:** Connect and read timeouts for HTTP requests
+are set to 5 seconds. Redirects are followed automatically.
+
+## Retrievable Protocol Validation (retrievable-protocol)
+
+**Purpose:** Verifies that the record's persistent identifier can be
+retrieved via an open, standard internet protocol.
+
+### XML (retrievable-protocol)
+
+**Metadata location:**
+`/codeBook/stdyDscr/citation/titlStmt/IDNo`
+
+**Validation logic:**
+
+- All `IDNo` elements are located using XPath (`//ddi:IDNo`).
+- For each element, the `agency` attribute and the element text content
+  (the identifier value) are read.
+- A resolution URL is constructed from the agency and value:
+  - `DOI` → `https://doi.org/<value>`
+  - `Handle` → `https://hdl.handle.net/<value>`
+  - `ARK` → `https://n2t.net/<value>`
+  - `URN` and unrecognised agencies → skipped.
+- The constructed URL is checked to confirm it uses an open protocol
+  (`http://` or `https://`) and then tested with an HTTP GET request.
+  The first URL that returns a 2xx or 3xx response returns `PASS`.
+
+### CDC JSON and HTML/JSON-LD (retrievable-protocol)
+
+**Metadata location:** `pidStudies` (top-level array)
+
+**Validation logic:**
+
+- Each entry in `pidStudies` is read for its `agency` and `pid` fields.
+- CDC JSON `pid` values may include a scheme prefix (e.g.
+  `"doi:10.17903/FK2/BVFEYX"`); this prefix is stripped before the
+  resolution URL is constructed.
+- Resolution URLs are constructed using the same agency mapping as for
+  XML (DOI, Handle, ARK); URNs and unrecognised agencies are skipped.
+- The first constructed URL that resolves successfully over HTTP returns
+  `PASS`.
+
+### Pass criteria (retrievable-protocol)
+
+At least one identifier resolves successfully via an open HTTP protocol.
+
+### Fail criteria (retrievable-protocol)
+
+Identifiers are present but none resolve, or no supported agency values
+are found.
+
+### Indeterminate result (retrievable-protocol)
+
+No identifiers were found, or an unexpected error occurred.
+
+**Key implementation note:** Connect and read timeouts are set to
+5 seconds. Redirects are followed automatically.
+
+## Searchable Metadata Validation (searchable)
+
+**Purpose:** Verifies that the record is discoverable via a standard
+metadata harvesting protocol.
+
+### XML (searchable)
+
+**Validation logic:**
+
+- The document is checked for the simultaneous presence of three
+  OAI-PMH structural elements using XPath:
+  - `//oai:record` — the OAI-PMH record wrapper.
+  - `//oai:header` — the OAI-PMH record header.
+  - `//oai:header/oai:identifier` — the OAI-PMH record identifier.
+- All three must be present for `PASS` to be returned. This confirms
+  the record is wrapped in a valid OAI-PMH envelope and is therefore
+  discoverable by OAI-PMH harvesters.
+
+### CDC JSON and HTML/JSON-LD (searchable)
+
+**Metadata location:** `studyXmlSourceUrl` (top-level field)
+
+**Validation logic:**
+
+- The `studyXmlSourceUrl` field is read. If absent or blank, `FAIL` is
+  returned.
+- The value must contain both the substrings `"oai"` and `"GetRecord"`,
+  which identifies it as an OAI-PMH `GetRecord` endpoint URL (e.g.
+  `.../oai?verb=GetRecord&identifier=...`).
+- If both substrings are present, `PASS` is returned.
+
+### Pass criteria (searchable)
+
+For XML: all three OAI-PMH structural elements are present. For JSON:
+`studyXmlSourceUrl` contains a valid OAI-PMH `GetRecord` URL.
+
+### Fail criteria (searchable)
+
+For XML: one or more of the required OAI-PMH elements are absent. For
+JSON: the field is absent, blank, or does not contain the expected
+substrings.
+
+### Indeterminate result (searchable)
+
+An unexpected error occurred whilst processing the metadata.
+
+## Structured Metadata Validation (structured-metadata)
+
+**Purpose:** Verifies that the record uses a recognised, structured
+metadata schema.
+
+### XML (structured-metadata)
+
+**Validation logic:**
+
+- The namespace URI declared on the document root element is compared
+  against the set of supported DDI Codebook namespace URIs held in
+  `SUPPORTED_DDI_NAMESPACES`.
+- If a supported DDI namespace is detected, `PASS` is returned.
+- If no supported namespace is found, `FAIL` is returned.
+
+### CDC JSON and HTML/JSON-LD (structured-metadata)
+
+**Metadata locations:** `titleStudy` and `abstract` (top-level fields)
+
+**Validation logic:**
+
+- A `PRESENCE_ANY` rule is applied across the `titleStudy` and
+  `abstract` fields.
+- The presence of a non-blank value in either field indicates that the
+  record follows the structured CDC schema.
+
+### Pass criteria (structured-metadata)
+
+For XML: a supported DDI namespace URI is declared on the document root.
+For JSON: at least one of `titleStudy` or `abstract` is non-blank.
+
+### Fail criteria (structured-metadata)
+
+For XML: no supported DDI namespace is found. For JSON: both fields are
+absent or blank.
+
+### Indeterminate result (structured-metadata)
+
+An unexpected error occurred whilst processing the metadata.
+
+**Key implementation note:** `structured-metadata` and
+`formal-kr-language` are closely related and will often agree. The
+distinction is that `structured-metadata` is a lower-bar structural
+check (is this a recognised schema?) whilst `formal-kr-language` is a
+higher-bar language check (is the schema declared formally, with
+namespace qualification and optional schema grounding?).
