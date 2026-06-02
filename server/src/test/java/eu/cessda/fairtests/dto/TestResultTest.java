@@ -32,6 +32,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import eu.cessda.fairtests.Result;
+import eu.cessda.fairtests.TestType;
 
 @DisplayName("TestResult Tests")
 class TestResultTest {
@@ -158,7 +159,7 @@ class TestResultTest {
             // Assert
             assertAll(
                 () -> assertNotNull(result.getOutputFromTest()),
-                () -> assertEquals("https://fair-tests.cessda.eu/assess/test/" + TEST_NAME, 
+                () -> assertEquals("https://ostrails.github.io/assessment-component-metadata-records/test/" + TestType.getFairTestId(TEST_NAME) + ".ttl", 
                     result.getOutputFromTest().getId()),
                 () -> assertEquals("Test", result.getOutputFromTest().getType())
             );

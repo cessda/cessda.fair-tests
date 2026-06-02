@@ -70,6 +70,7 @@ public class TestResult {
     private String description;
     private String testEndpoint = "https://fair-tests.cessda.eu/assess/test/";
     private String testDocumentationEndpoint = "https://fair-tests.cessda.eu/api/"; 
+    private String testDescriptionEndpoint = "https://ostrails.github.io/assessment-component-metadata-records/test/";
 
     private License license; 
     private String value;
@@ -112,12 +113,12 @@ public class TestResult {
         this.testName = name;
         this.value = result.toString();
         this.log = getLogMessage(result);
-        this.title = "Output from running test: " + name +
-                " (" + testEndpoint + name + ")";
+        this.title = "Output from running test: " + testName +
+                " (" + testEndpoint + testName + ")";
         this.license = new License("http://creativecommons.org/licenses/by/4.0/");
         this.completion = new Completion(getCompletionPercentage(result));
         this.assessmentTarget = new AssessmentTarget(resourceUrl);
-        this.outputFromTest = new OutputFromTest(testEndpoint + name);
+        this.outputFromTest = new OutputFromTest(testDescriptionEndpoint + TestType.getFairTestId(testName)  + ".ttl");
         this.generatedAtTime = new GeneratedAtTime();
         this.wasGeneratedBy = new WasGeneratedBy(resourceUrl, name, this);
         this.description = wasGeneratedBy.getWasAssociatedWith().getDescription();
