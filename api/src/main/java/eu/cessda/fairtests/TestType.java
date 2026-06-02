@@ -25,7 +25,7 @@ public enum TestType {
     /** Checks whether records contain a Persistent Identifier */
     PID("pid", "FT-F1-PID_M_CESSDA"),
     /** Checks whether records contain metadata that is grounded in a standard vocabulary */
-    GROUNDED_METADATA("grounded-metadata", "FT-F2B_M_GM"),
+    GROUNDED_METADATA("grounded-metadata", "FT-F2B_M_GM_CESSDA"), 
     /** Checks whether records contain metadata that is indexed in a searchable catalogue */
     SEARCHABLE ("searchable", "FT-F4_M_SE"),
     /** Checks whether records contain structured metadata */
