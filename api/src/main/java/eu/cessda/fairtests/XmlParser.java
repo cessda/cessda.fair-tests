@@ -578,7 +578,8 @@ public class XmlParser implements FormatParser {
                     ddiNamespace);
 
             if (hasSchema) {
-                /* TODO: INCLUDE CHECK FOR DDI CODEBOOK 2.6 SCHEMA LOCATION
+                /*
+                 * TODO: INCLUDE CHECK FOR DDI CODEBOOK 2.6 SCHEMA LOCATION
                  *
                  * Also check /ddi:codeBook/@xsi:schemaLocation for DDI
                  * Codebook 2.5 schema grounding, which may not be captured
@@ -1559,17 +1560,34 @@ public class XmlParser implements FormatParser {
 
         return switch (a) {
 
-            case "doi" ->
-                "https://doi.org/" + v;
+            case "doi" -> {
+                String doi = v.toLowerCase().startsWith("doi:") ? v.substring(4) : v;
+                yield "https://doi.org/" + doi;
+            }
 
-            case "handle" ->
-                "https://hdl.handle.net/" + v;
+            case "handle" -> {
+                String hdl = v.toLowerCase().startsWith("hdl:") ? v.substring(4) : v;
+                yield "https://hdl.handle.net/" + hdl;
+            }
 
-            case "ark" ->
-                "https://n2t.net/" + v;
+            case "ark" -> {
+                String ark = v.toLowerCase().startsWith("ark:") ? v.substring(4) : v;
+                if (ark.startsWith("/"))
+                    ark = ark.substring(1);
+                yield "https://n2t.net/ark:/" + ark;
+            }
 
-            case "urn" ->
-                null;
+            case "urn" -> {
+                String lower = v.toLowerCase();
+                if (lower.startsWith("urn:nbn:")) {
+                    yield "https://nbn-resolving.org/" + v;
+                } else if (lower.startsWith("urn:doi:")) {
+                    String doi = v.substring(8); // strip "urn:doi:"
+                    yield "https://doi.org/" + doi;
+                } else {
+                    yield null; // unknown URN namespace, skip
+                }
+            }
 
             default ->
                 null;
