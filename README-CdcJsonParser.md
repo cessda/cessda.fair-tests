@@ -198,9 +198,8 @@ The method:
 - The `RULES` map is a `static final Map.ofEntries(…)`; the class is
   therefore effectively stateless after construction and safe to share
   across threads.
-- The `samplingProcedureFreeTexts` field uses a `CONTAINS` match because
-  the spec field (`typeOfSamplingProcedures`) is not consistently used in
-  practice and the actual field holds free text rather than controlled
+- The `typeOfSamplingProcedures` field uses an `EXACT` match because
+  the spec field (`typeOfSamplingProcedures`) holds controlled
   vocabulary terms.
 - The `FAIR_VOCABULARY`, `GROUNDED_METADATA`, and
   `RETRIEVABLE_PROTOCOL` tests make outbound HTTP requests at runtime.

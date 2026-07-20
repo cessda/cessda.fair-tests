@@ -102,9 +102,8 @@ public class CdcJsonParser implements FormatParser {
      * <li>{@code PID}: extracts the {@code agency} field from each entry in
      * {@code pidStudies} (e.g. {@code "DOI"}) and checks it against approved
      * PID schemas.</li>
-     * <li>{@code DDI_SAMPLEPROC}: uses {@code samplingProcedureFreeTexts}
-     * rather than {@code typeOfSamplingProcedures[*].term} because the CDC
-     * schema stores free text here; CONTAINS match is used accordingly.</li>
+     * <li>{@code DDI_SAMPLEPROC}: uses {@code typeOfSamplingProcedures[*].term}; 
+     * EXACT match is used accordingly.</li>
      * <li>{@code PROVENANCE}: PRESENCE_ANY across publisher name, creator
      * names, and funding agency — any non-blank value returns PASS.</li>
      * <li>{@code STRUCTURED_METADATA}: PRESENCE_ANY on {@code titleStudy} and
@@ -167,9 +166,9 @@ public class CdcJsonParser implements FormatParser {
             Map.entry(TestType.DDI_SAMPLEPROC,
                     new ValidationRule(
                             RuleType.VOCAB_MATCH,
-                            List.of("samplingProcedureFreeTexts"),
+                            List.of("typeOfSamplingProcedures"),
                             VocabularyService::getApprovedSamplingProcTerms,
-                            MatchType.CONTAINS,
+                            MatchType.EXACT,
                             "Sampling Procedure")),
 
             Map.entry(TestType.PROVENANCE,

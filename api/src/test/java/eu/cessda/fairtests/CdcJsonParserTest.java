@@ -258,14 +258,16 @@ class CdcJsonParserTest {
     }
 
     @Test
-    @DisplayName("Should pass DDI_SAMPLEPROC using contains match")
-    void shouldPassSamplingProcedureContainsMatch() throws Exception {
+    @DisplayName("Should pass DDI_SAMPLEPROC with matching term")
+    void shouldPassSamplingProcedureValidation() throws Exception {
 
         String json = """
                 {
                   "id": "dataset-1",
-                  "samplingProcedureFreeTexts": [
-                    "Probability sampling with regional stratification"
+                  "typeOfSamplingProcedures": [
+                    {
+                      "term": "Probability sampling"
+                    }
                   ]
                 }
                 """;
