@@ -91,18 +91,39 @@ public class CdcJsonParser implements FormatParser {
     }
 
     /**
+     * Normalises the input document to a single entity node, handling both
+     * the CDC-schema structure (fields at document root) and the SKG-IF
+     * structure (entity fields nested under the first @graph element).
+     *
+     * @param document the root JSON document as parsed from the source
+     * @return the JsonNode representing the entity to be validated
+     */
+    private JsonNode normaliseEntity(JsonNode document) {
+
+        JsonNode graphNode = document.path("@graph");
+
+        if (graphNode.isArray() && graphNode.size() > 0) {
+            return graphNode.get(0);
+        }
+
+        return document;
+    }
+
+    /**
      * Maps each rules-based {@link TestType} to a {@link ValidationRule}.
      * Tests that require bespoke logic ({@code ELSST_KEYWORDS},
      * {@code FAIR_VOCABULARY}, {@code GROUNDED_METADATA},
      * {@code RETRIEVABLE_PROTOCOL}, and {@code SEARCHABLE}) are not listed
      * here; they are dispatched directly in {@link #runTest}.
      *
-     * <p>Notes on specific rules:</p>
+     * <p>
+     * Notes on specific rules:
+     * </p>
      * <ul>
      * <li>{@code PID}: extracts the {@code agency} field from each entry in
      * {@code pidStudies} (e.g. {@code "DOI"}) and checks it against approved
      * PID schemas.</li>
-     * <li>{@code DDI_SAMPLEPROC}: uses {@code typeOfSamplingProcedures[*].term}; 
+     * <li>{@code DDI_SAMPLEPROC}: uses {@code typeOfSamplingProcedures[*].term};
      * EXACT match is used accordingly.</li>
      * <li>{@code PROVENANCE}: PRESENCE_ANY across publisher name, creator
      * names, and funding agency — any non-blank value returns PASS.</li>
@@ -202,7 +223,8 @@ public class CdcJsonParser implements FormatParser {
      * Runs the specified test against the JSON dataset read from the input
      * stream.
      *
-     * <p>The method first parses the stream and verifies that an {@code id}
+     * <p>
+     * The method first parses the stream and verifies that an {@code id}
      * field is present (returning {@link Result#INDETERMINATE} if not). It
      * then dispatches to a bespoke method for test types that cannot be
      * expressed as a simple rule ({@code ELSST_KEYWORDS},
@@ -223,22 +245,38 @@ public class CdcJsonParser implements FormatParser {
     public Result runTest(TestType test, InputStream inputStream,
             VocabularyService vocabulary) throws IOException {
 
-        JsonNode dataset = mapper.readTree(inputStream);
+        //JsonNode dataset = mapper.readTree(inputStream);
+        JsonNode dataset = normaliseEntity(mapper.readTree(inputStream));
 
-        if (dataset.path("id").isMissingNode()) {
+        // Ensure that the dataset has an ID or local_identifier for logging
+        // This allows JSON returned by CESSDA SKG-IF to be validated,
+        // even though it does not have an "id" field
+        if (dataset.path("id").isMissingNode()
+                && dataset.path("local_identifier").isMissingNode()) {
             FairTests.logWarning(
                     "Dataset ID is required for validation but was not "
-                    + "found. Cannot perform test.");
+                            + "found. Cannot perform test.");
             return Result.INDETERMINATE;
         }
 
         switch (test) {
-            case ELSST_KEYWORDS       -> { return checkElsstKeywords(dataset, vocabulary); }
-            case FAIR_VOCABULARY      -> { return checkFairVocabulary(dataset); }
-            case GROUNDED_METADATA    -> { return checkGroundedMetadata(dataset); }
-            case RETRIEVABLE_PROTOCOL -> { return checkRetrievableProtocol(dataset); }
-            case SEARCHABLE           -> { return checkSearchable(dataset); }
-            default -> { /* fall through to rules-based evaluation */ }
+            case ELSST_KEYWORDS -> {
+                return checkElsstKeywords(dataset, vocabulary);
+            }
+            case FAIR_VOCABULARY -> {
+                return checkFairVocabulary(dataset);
+            }
+            case GROUNDED_METADATA -> {
+                return checkGroundedMetadata(dataset);
+            }
+            case RETRIEVABLE_PROTOCOL -> {
+                return checkRetrievableProtocol(dataset);
+            }
+            case SEARCHABLE -> {
+                return checkSearchable(dataset);
+            }
+            default -> {
+                /* fall through to rules-based evaluation */ }
         }
 
         ValidationRule rule = RULES.get(test);
@@ -257,12 +295,14 @@ public class CdcJsonParser implements FormatParser {
     /**
      * Evaluates a {@link ValidationRule} against the dataset.
      *
-     * <p>Extracts candidate values from the fields named in the rule. If no
+     * <p>
+     * Extracts candidate values from the fields named in the rule. If no
      * values are found, returns {@link Result#FAIL}. For
      * {@link RuleType#PRESENCE_ANY} rules, returns {@link Result#PASS} if any
      * non-blank value is present. For {@link RuleType#VOCAB_MATCH} rules,
      * normalises both candidates and approved terms and returns
-     * {@link Result#PASS} on the first match.</p>
+     * {@link Result#PASS} on the first match.
+     * </p>
      *
      * @param dataset    the JSON dataset to validate
      * @param rule       the validation rule to apply
@@ -316,17 +356,21 @@ public class CdcJsonParser implements FormatParser {
     /**
      * Validates ELSST keywords in the dataset against the ELSST vocabulary.
      *
-     * <p>Candidate keywords are those whose {@code vocab} field equals
+     * <p>
+     * Candidate keywords are those whose {@code vocab} field equals
      * {@code "ELSST"} (case-sensitive) and whose {@code vocabUri} field
-     * contains the substring {@code "elsst"}.</p>
+     * contains the substring {@code "elsst"}.
+     * </p>
      *
-     * <p>The language codes to validate against are read from the dataset's
+     * <p>
+     * The language codes to validate against are read from the dataset's
      * top-level {@code langAvailableIn} array. Validation is attempted for
      * each language code in turn; the method returns {@link Result#PASS} as
      * soon as any language produces a successful match. If
      * {@code langAvailableIn} is absent, empty, or not an array, the method
      * returns {@link Result#FAIL} because no language code is available to
-     * validate against.</p>
+     * validate against.
+     * </p>
      *
      * @param dataset    the JSON dataset to validate
      * @param vocabulary the vocabulary service to use for validation
@@ -355,7 +399,7 @@ public class CdcJsonParser implements FormatParser {
         if (!langAvailableIn.isArray() || langAvailableIn.isEmpty()) {
             FairTests.logWarning(
                     "No langAvailableIn codes found — cannot validate "
-                    + "ELSST keywords");
+                            + "ELSST keywords");
             return Result.FAIL;
         }
 
@@ -366,7 +410,8 @@ public class CdcJsonParser implements FormatParser {
             if (vocabulary.validateElsstKeywords(terms, lang) == Result.PASS) {
                 FairTests.logInfo(
                         "ELSST keywords validated successfully for "
-                        + "language %s", lang);
+                                + "language %s",
+                        lang);
                 return Result.PASS;
             }
         }
@@ -379,12 +424,14 @@ public class CdcJsonParser implements FormatParser {
      * vocabulary by scanning all vocabulary-bearing arrays for a non-blank
      * {@code vocabUri} value that can be reached over HTTP.
      *
-     * <p>The following top-level arrays are inspected:
+     * <p>
+     * The following top-level arrays are inspected:
      * {@code classifications}, {@code keywords}, {@code unitTypes},
      * {@code typeOfModeOfCollections}, and {@code typeOfTimeMethods}. For
      * each entry, both a non-blank {@code vocab} name and a non-blank
      * {@code vocabUri} must be present. The first {@code vocabUri} that
-     * resolves successfully returns {@link Result#PASS}.</p>
+     * resolves successfully returns {@link Result#PASS}.
+     * </p>
      *
      * @param dataset the JSON dataset to inspect
      * @return {@link Result#PASS} if a resolvable vocabulary URI is found;
@@ -408,7 +455,7 @@ public class CdcJsonParser implements FormatParser {
                     continue;
 
                 for (JsonNode entry : array) {
-                    String vocab    = entry.path("vocab").asText("").trim();
+                    String vocab = entry.path("vocab").asText("").trim();
                     String vocabUri = entry.path("vocabUri").asText("").trim();
 
                     if (vocab.isEmpty() || vocabUri.isEmpty())
@@ -444,11 +491,13 @@ public class CdcJsonParser implements FormatParser {
      * Checks whether the dataset's metadata is grounded by attempting to
      * resolve the {@code studyUrl} field over HTTP.
      *
-     * <p>{@code studyUrl} is expected to be a persistent, resolvable URL
+     * <p>
+     * {@code studyUrl} is expected to be a persistent, resolvable URL
      * (typically a DOI landing page) that grounds the metadata record in a
      * retrievable resource. If the field is absent or blank, the method
      * returns {@link Result#FAIL}. If the URL resolves successfully,
-     * {@link Result#PASS} is returned.</p>
+     * {@link Result#PASS} is returned.
+     * </p>
      *
      * @param dataset the JSON dataset to inspect
      * @return {@link Result#PASS} if {@code studyUrl} resolves;
@@ -498,15 +547,19 @@ public class CdcJsonParser implements FormatParser {
      * Checks whether any PID in the dataset's {@code pidStudies} array can be
      * resolved via an open HTTP protocol.
      *
-     * <p>For each entry in {@code pidStudies}, the {@code agency} and
+     * <p>
+     * For each entry in {@code pidStudies}, the {@code agency} and
      * {@code pid} fields are read. A resolution URL is constructed using
      * {@link #buildResolutionUrl(String, String)} (supporting DOI, Handle,
      * and ARK agencies). The first URL that uses an open protocol and
-     * resolves successfully returns {@link Result#PASS}.</p>
+     * resolves successfully returns {@link Result#PASS}.
+     * </p>
      *
-     * <p>Note: the {@code pid} values in the CDC JSON may include a
+     * <p>
+     * Note: the {@code pid} values in the CDC JSON may include a
      * scheme prefix (e.g. {@code "doi:10.17903/FK2/BVFEYX"}). The prefix
-     * is stripped before constructing the resolution URL.</p>
+     * is stripped before constructing the resolution URL.
+     * </p>
      *
      * @param dataset the JSON dataset to inspect
      * @return {@link Result#PASS} if a resolvable PID is found;
@@ -525,7 +578,7 @@ public class CdcJsonParser implements FormatParser {
 
             for (JsonNode entry : pidStudies) {
                 String agency = entry.path("agency").asText("").trim();
-                String pid    = entry.path("pid").asText("").trim();
+                String pid = entry.path("pid").asText("").trim();
 
                 // Strip any scheme prefix, e.g. "doi:10.x/y" -> "10.x/y"
                 String value = stripPidPrefix(pid);
@@ -560,10 +613,12 @@ public class CdcJsonParser implements FormatParser {
      * request, indicating the record is exposed via OAI-PMH and is therefore
      * discoverable by harvesters.
      *
-     * <p>A URL is accepted if it is non-blank and contains both
+     * <p>
+     * A URL is accepted if it is non-blank and contains both
      * {@code "oai"} and {@code "GetRecord"} as substrings. This matches the
      * canonical OAI-PMH endpoint pattern used in CDC records (e.g.
-     * {@code .../oai?verb=GetRecord&identifier=...}).</p>
+     * {@code .../oai?verb=GetRecord&identifier=...}).
+     * </p>
      *
      * @param dataset the JSON dataset to inspect
      * @return {@link Result#PASS} if a valid OAI-PMH source URL is found;
@@ -606,9 +661,11 @@ public class CdcJsonParser implements FormatParser {
     /**
      * Strips a scheme prefix from a PID value, returning the bare identifier.
      *
-     * <p>For example, {@code "doi:10.17903/FK2/BVFEYX"} becomes
+     * <p>
+     * For example, {@code "doi:10.17903/FK2/BVFEYX"} becomes
      * {@code "10.17903/FK2/BVFEYX"}. If no colon-delimited prefix is found,
-     * or if the value is blank, the value is returned unchanged.</p>
+     * or if the value is blank, the value is returned unchanged.
+     * </p>
      *
      * @param pid the raw PID value, possibly prefixed with a scheme
      * @return the PID value with any leading scheme prefix removed
@@ -643,10 +700,10 @@ public class CdcJsonParser implements FormatParser {
             return null;
 
         return switch (agency.trim().toLowerCase()) {
-            case "doi"    -> "https://doi.org/" + value.trim();
+            case "doi" -> "https://doi.org/" + value.trim();
             case "handle" -> "https://hdl.handle.net/" + value.trim();
-            case "ark"    -> "https://n2t.net/" + value.trim();
-            default       -> null;
+            case "ark" -> "https://n2t.net/" + value.trim();
+            default -> null;
         };
     }
 
@@ -674,8 +731,7 @@ public class CdcJsonParser implements FormatParser {
      */
     private boolean resolves(String url) {
         try {
-            HttpURLConnection conn =
-                    (HttpURLConnection) new URI(url).toURL().openConnection();
+            HttpURLConnection conn = (HttpURLConnection) new URI(url).toURL().openConnection();
             conn.setInstanceFollowRedirects(true);
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(5000);
@@ -828,7 +884,7 @@ public class CdcJsonParser implements FormatParser {
     private boolean matches(String candidate, Set<String> approved,
             MatchType type) {
         return switch (type) {
-            case EXACT    -> approved.contains(candidate);
+            case EXACT -> approved.contains(candidate);
             case CONTAINS -> approved.stream().anyMatch(candidate::contains);
         };
     }
