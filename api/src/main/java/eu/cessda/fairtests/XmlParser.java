@@ -1053,12 +1053,21 @@ public class XmlParser implements FormatParser {
 
     /**
      * Checks for the presence of grounded metadata in the XML document by
-     * extracting all namespaces used in the document and checking if any of
-     * them are resolvable (i.e. can be accessed via HTTP). The method ignores
-     * common infrastructure namespaces (e.g. XML, RDF) and focuses on
-     * namespaces that are likely to represent the dataset's own metadata. If
-     * any resolvable namespaces are found, it returns Result.PASS; if no
-     * resolvable namespaces are found but candidates are present, it returns
+     * extracting all namespaces and schema locations used in the document, as
+     * well as the study URL, and checking if any of these candidates are
+     * resolvable (i.e. can be accessed via HTTP). The study URL is sourced
+     * from the "URI" attribute of the "ddi:holdings" element within the study
+     * citation, located via the XPath expression
+     * //ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:holdings/@URI, as this is
+     * where the dataset's own resolvable location is recorded. A leading "//"
+     * is used so that "ddi:codeBook" is matched wherever it occurs in the
+     * document, since it may be nested inside an enclosing envelope (e.g. an
+     * OAI-PMH response) rather than being the document's root element. The
+     * method
+     * ignores common infrastructure namespaces (e.g. XML, RDF) and focuses on
+     * candidates that are likely to represent the dataset's own metadata. If
+     * any resolvable candidates are found, it returns Result.PASS; if no
+     * resolvable candidates are found but candidates are present, it returns
      * Result.FAIL; if no candidates are found or an error occurs, it returns
      * Result.INDETERMINATE. This method provides a heuristic approach to
      * determine whether the dataset includes grounded metadata that can be
@@ -1067,7 +1076,7 @@ public class XmlParser implements FormatParser {
      * processing steps and any issues encountered for debugging purposes.
      *
      * @param doc the XML document to check for grounded metadata
-     * @return Result indicating whether resolvable namespaces are found (PASS),
+     * @return Result indicating whether resolvable candidates are found (PASS),
      *         candidates are found but none are resolvable (FAIL), or
      *         if no candidates are found or an error occurs (INDETERMINATE).
      */
@@ -1079,6 +1088,12 @@ public class XmlParser implements FormatParser {
             Set<String> candidates = new HashSet<>();
             candidates.addAll(extractNamespaces(doc));
             candidates.addAll(extractSchemaLocations(doc));
+
+            String studyUrl = extractStudyUrl(doc);
+
+            if (studyUrl != null && !studyUrl.isBlank()) {
+                candidates.add(studyUrl);
+            }
 
             FairTests.logInfo("Grounding candidates: %s", candidates);
 
@@ -1119,6 +1134,51 @@ public class XmlParser implements FormatParser {
         collectSchemaLocations(doc.getDocumentElement(), locations);
 
         return locations;
+    }
+
+    /**
+     * Extracts the study URL from the XML document, which serves as the
+     * information source for the grounded metadata check's study-level
+     * candidate. The study URL is read from the "URI" attribute of the
+     * "ddi:holdings" element within the study citation, using the XPath
+     * expression
+     * //ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:holdings/@URI. A leading
+     * "//" is used so that "ddi:codeBook" is matched wherever it occurs in
+     * the document, since it may be nested inside an enclosing envelope
+     * (e.g. an OAI-PMH response) rather than being the document's root
+     * element. This attribute typically records the location where the
+     * study's data and metadata can be accessed, making it a useful
+     * additional candidate when determining whether the dataset includes
+     * grounded metadata. If the XPath expression does not match any node, or
+     * the value is blank, or an error occurs during evaluation, the method
+     * returns null so that the caller can treat the study URL as absent.
+     *
+     * @param doc the XML document from which to extract the study URL
+     * @return the study URL as a String, or null if it is not present, blank,
+     *         or an error occurs during extraction
+     */
+
+    private String extractStudyUrl(Document doc) {
+
+        try {
+
+            XPath xpath = createXPath(doc);
+
+            String studyUrl = (String) xpath.evaluate(
+                    "//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:holdings/@URI",
+                    doc,
+                    XPathConstants.STRING);
+
+            return (studyUrl == null || studyUrl.isBlank()) ? null : studyUrl;
+
+        } catch (XPathExpressionException e) {
+
+            FairTests.logInfo(
+                    "Study URL extraction failed: %s",
+                    e.getMessage());
+
+            return null;
+        }
     }
 
     /**
