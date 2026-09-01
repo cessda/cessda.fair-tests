@@ -23,7 +23,7 @@ The following `TestType` values are handled:
 - `DDI_ANALYSIS_UNIT` — checks the `unitTypes` field (EXACT match).
 - `DDI_COLLECTION_MODE` — checks the `typeOfModeOfCollections` field
   (EXACT match).
-- `DDI_SAMPLEPROC` — checks `samplingProcedureFreeTexts` for an approved
+- `DDI_SAMPLEPROC` — checks `typeOfSamplingProcedures` for an approved
   sampling procedure term (CONTAINS match, because this field holds free
   text rather than controlled vocabulary terms).
 - `DDI_TIME_METHOD` — checks the `typeOfTimeMethods` field (EXACT match).
@@ -68,7 +68,7 @@ Expected field locations:
 | `ACCESS_RIGHTS` | `dataAccess` |
 | `DDI_ANALYSIS_UNIT` | `unitTypes[*].term` |
 | `DDI_COLLECTION_MODE` | `typeOfModeOfCollections[*].term` |
-| `DDI_SAMPLEPROC` | `samplingProcedureFreeTexts[*]` |
+| `DDI_SAMPLEPROC` | `typeOfSamplingProcedures[*]` |
 | `DDI_TIME_METHOD` | `typeOfTimeMethods[*].term` |
 | `ELSST_KEYWORDS` | `keywords[*].term` |
 | `ELSST_KEYWORDS` | `keywords[*].vocab` |

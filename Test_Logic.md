@@ -319,11 +319,11 @@ controlled vocabulary.
 
 ### CDC JSON and HTML/JSON-LD (ddi-sampleproc)
 
-**Metadata location:** `samplingProcedureFreeTexts` (top-level field)
+**Metadata location:** `typeOfSamplingProcedures` (top-level field)
 
 **Validation logic:**
 
-- The `samplingProcedureFreeTexts` field is extracted; it may be a
+- The `typeOfSamplingProcedures` field is extracted; it may be a
   string or an array of strings.
 - A CONTAINS, case-insensitive comparison is performed between each
   value and the approved sampling procedure terms.
@@ -346,7 +346,7 @@ approved terms.
 An error occurred whilst fetching or processing the metadata.
 
 **Key implementation note:** Both formats use CONTAINS matching for this
-test because the `samplingProcedureFreeTexts` field (and the equivalent
+test because the `typeOfSamplingProcedures` field (and the equivalent
 `sampProc` element) commonly contains free text rather than a bare
 controlled vocabulary term.
 
@@ -528,8 +528,8 @@ controlled vocabulary by a URI.
 ### CDC JSON and HTML/JSON-LD (fair-vocabulary)
 
 **Metadata location:** `vocab` and `vocabUri` fields within the
-`classifications`, `keywords`, `unitTypes`, `typeOfModeOfCollections`,
-and `typeOfTimeMethods` arrays
+`classifications`, `keywords`, `unitTypes`, `sampProc`,
+`typeOfModeOfCollections`, and `typeOfTimeMethods` arrays
 
 **Validation logic:**
 
