@@ -613,14 +613,19 @@ resolvable, machine-readable resource.
 
 - All namespace URIs used anywhere in the document are collected by
   traversing the DOM tree (both element and attribute namespaces).
-- All URLs from `xsi:schemaLocation` and
-  `xsi:noNamespaceSchemaLocation` attributes are collected.
-- Common infrastructure namespaces are excluded from consideration:
-  those beginning with `http://www.w3.org/`,
-  `http://www.openarchives.org/`, `http://www.loc.gov/`, or
-  `http://purl.org/dc/`, and any URI containing `"xml"`.
-- Each remaining candidate URL is tested with an HTTP GET request.
-  The first URL that returns a 2xx or 3xx response returns `PASS`.
+- All URLs from `xsi:schemaLocation` and `xsi:noNamespaceSchemaLocation`
+  attributes are collected.
+- The study URL is collected from the `URI` attribute of
+  `//ddi:codeBook/ddi:stdyDscr/ddi:citation/ddi:holdings`, matched
+  wherever `ddi:codeBook` occurs in the document (e.g. nested inside an
+  OAI-PMH envelope), as this is the information source of the study's own
+  resolvable location.
+- Common infrastructure namespaces are excluded from consideration: those
+  beginning with `http://www.w3.org/`, `http://www.openarchives.org/`,
+  `http://www.loc.gov/`, or `http://purl.org/dc/`, and any URI containing
+  `"xml"`.
+- Each remaining candidate URL is tested with an HTTP GET request. The
+  first URL that returns a 2xx or 3xx response returns `PASS`.
 
 ### CDC JSON and HTML/JSON-LD (grounded-metadata)
 
